@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.example.BookMate'
+    compileSdk 33
+
+    defaultConfig {
+        applicationId "com.example.BookMate"
+        minSdk 24
+        targetSdk 33
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    // AndroidX Core & AppCompat
+    implementation 'androidx.appcompat:appcompat:1.4.1'
+
+    // Material Components (for MaterialButton, MaterialToolbar, FAB, etc.)
+    implementation 'com.google.android.material:material:1.5.0'
+
+    // ConstraintLayout for flexible XML layouts
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.3'
+
+    // CardView for item_book.xml card styling
+    implementation 'androidx.cardview:cardview:1.0.0'
+
+    // RecyclerView for book lists
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
+
+    // Test dependencies
+    testImplementation 'junit:junit:4.13.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.1.3'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.4.0'
+}
