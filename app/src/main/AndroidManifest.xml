@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Week 11: Internet permission for Open Library API calls -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Week 10: Notification permission (Android 13+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- Week 10: Exact alarm permission for daily reading reminder -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MyApplication"
+        tools:targetApi="31">
+
+        <!-- Week 8: Main Activity (Launcher) — Offline reading list -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Week 8: Search Activity — Online book search via API -->
+        <activity
+            android:name=".SearchActivity"
+            android:exported="false" />
+
+        <!-- Week 8: Book Detail Activity — View details, save, share -->
+        <activity
+            android:name=".BookDetailActivity"
+            android:exported="false" />
+
+        <!-- Week 10: BroadcastReceiver for daily reading reminder -->
+        <receiver
+            android:name=".ReminderReceiver"
+            android:exported="false" />
+
+        <!-- Week 10: Simple started Service for background tasks -->
+        <service
+            android:name=".BookService"
+            android:exported="false" />
+
+    </application>
+
+</manifest>
