@@ -42,6 +42,11 @@
             android:name=".BookDetailActivity"
             android:exported="false" />
 
+        <!-- Reader Activity — Direct reading experience -->
+        <activity
+            android:name=".ReaderActivity"
+            android:exported="false" />
+
         <!-- Week 10: BroadcastReceiver for daily reading reminder -->
         <receiver
             android:name=".ReminderReceiver"

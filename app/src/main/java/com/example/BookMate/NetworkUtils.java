@@ -88,7 +88,9 @@ public class NetworkUtils {
      *       "title": "...",
      *       "author_name": ["Author1", "Author2"],
      *       "first_publish_year": 2001,
-     *       "publisher": ["Publisher1"]
+     *       "publisher": ["Publisher1"],
+     *       "ia": ["identifier"],
+     *       "key": "/works/OL..."
      *     },
      *     ...
      *   ]
@@ -131,8 +133,21 @@ public class NetworkUtils {
                     }
                 }
 
-                // Create Book object (no id, no status — online result)
-                books.add(new Book(title, author, publishYear, publisher));
+                // Extract direct reading URL (if available via Internet Archive or Open Library)
+                String readUrl = null;
+                if (bookJson.has("ia")) {
+                    JSONArray iaArray = bookJson.getJSONArray("ia");
+                    if (iaArray.length() > 0) {
+                        String iaId = iaArray.getString(0);
+                        readUrl = "https://archive.org/details/" + iaId + "/mode/2up";
+                    }
+                }
+                if (readUrl == null && bookJson.has("key")) {
+                    readUrl = "https://openlibrary.org" + bookJson.getString("key");
+                }
+
+                // Create Book object with readUrl (online result)
+                books.add(new Book(title, author, publishYear, publisher, readUrl));
             }
 
         } catch (Exception e) {

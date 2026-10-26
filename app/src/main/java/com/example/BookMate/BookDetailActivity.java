@@ -20,13 +20,15 @@ import com.google.android.material.button.MaterialButton;
  *          Shares recommendations via Implicit Intent
  *          (ACTION_SEND, text/plain).
  * Week 11: Saves/updates/deletes books in SQLite database.
+ * Reader : Launches ReaderActivity for distraction-free reading,
+ *          displays persisted reading progress.
  * ============================================================
  */
 public class BookDetailActivity extends AppCompatActivity {
 
     // ── UI References ─────────────────────────────────────────
-    private TextView tvTitle, tvAuthor, tvYear, tvPublisher, tvStatus;
-    private MaterialButton btnSaveWantToRead, btnSaveFinished, btnDelete, btnShare;
+    private TextView tvTitle, tvAuthor, tvYear, tvPublisher, tvStatus, tvDetailReadingProgress;
+    private MaterialButton btnReadBook, btnSaveWantToRead, btnSaveFinished, btnDelete, btnShare;
 
     // ── Data ──────────────────────────────────────────────────
     private Book book;
@@ -62,6 +64,8 @@ public class BookDetailActivity extends AppCompatActivity {
         tvYear = findViewById(R.id.tvDetailYear);
         tvPublisher = findViewById(R.id.tvDetailPublisher);
         tvStatus = findViewById(R.id.tvDetailStatus);
+        tvDetailReadingProgress = findViewById(R.id.tvDetailReadingProgress);
+        btnReadBook = findViewById(R.id.btnReadBook);
         btnSaveWantToRead = findViewById(R.id.btnSaveWantToRead);
         btnSaveFinished = findViewById(R.id.btnSaveFinished);
         btnDelete = findViewById(R.id.btnDelete);
@@ -75,6 +79,13 @@ public class BookDetailActivity extends AppCompatActivity {
 
         // ── Button Listeners ──────────────────────────────────
         setupButtonListeners();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Refresh status and reading progress when returning from ReaderActivity
+        checkSavedStatus();
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -91,7 +102,7 @@ public class BookDetailActivity extends AppCompatActivity {
     /**
      * Check if this book already exists in the local database.
      * If saved, update the UI to show its current status and
-     * enable the Delete button.
+     * reading progress, and enable the Delete button.
      */
     private void checkSavedStatus() {
         Book savedBook = dbHelper.isBookSaved(book.getTitle());
@@ -99,6 +110,10 @@ public class BookDetailActivity extends AppCompatActivity {
             // Book is already saved — update our local reference
             book.setId(savedBook.getId());
             book.setStatus(savedBook.getStatus());
+            book.setLastReadPosition(savedBook.getLastReadPosition());
+            if (savedBook.getReadUrl() != null && !savedBook.getReadUrl().isEmpty()) {
+                book.setReadUrl(savedBook.getReadUrl());
+            }
 
             // Show the status badge
             tvStatus.setVisibility(View.VISIBLE);
@@ -110,11 +125,23 @@ public class BookDetailActivity extends AppCompatActivity {
                 setBadgeColor(tvStatus, 0xFF388E3C);
             }
 
+            // Show reading progress if started
+            if (book.getLastReadPosition() > 0) {
+                tvDetailReadingProgress.setVisibility(View.VISIBLE);
+                tvDetailReadingProgress.setText("🔖 Reading in progress");
+                btnReadBook.setText("📖  Continue Reading");
+            } else {
+                tvDetailReadingProgress.setVisibility(View.GONE);
+                btnReadBook.setText("📖  Start Reading");
+            }
+
             // Show the Delete button
             btnDelete.setVisibility(View.VISIBLE);
         } else {
             tvStatus.setVisibility(View.GONE);
+            tvDetailReadingProgress.setVisibility(View.GONE);
             btnDelete.setVisibility(View.GONE);
+            btnReadBook.setText("📖  Start Reading");
         }
     }
 
@@ -123,6 +150,19 @@ public class BookDetailActivity extends AppCompatActivity {
     // ═══════════════════════════════════════════════════════════
 
     private void setupButtonListeners() {
+
+        // ── Direct Reading: Launch ReaderActivity ─────────────
+        btnReadBook.setOnClickListener(v -> {
+            // Auto-save to "WANT_TO_READ" if not saved yet so progress can be tracked
+            if (!book.isSaved()) {
+                book.setStatus("WANT_TO_READ");
+                dbHelper.addOrUpdateBook(book);
+            }
+
+            Intent readerIntent = new Intent(BookDetailActivity.this, ReaderActivity.class);
+            readerIntent.putExtra("book", book);
+            startActivity(readerIntent);
+        });
 
         // ── Save as "Want to Read" (Week 11: SQLite Insert/Update)
         btnSaveWantToRead.setOnClickListener(v -> {
@@ -146,6 +186,7 @@ public class BookDetailActivity extends AppCompatActivity {
                 dbHelper.deleteBook(book.getId());
                 book.setStatus(null);
                 book.setId(-1);
+                book.setLastReadPosition(0);
                 Toast.makeText(this, "Removed from your list", Toast.LENGTH_SHORT).show();
                 checkSavedStatus(); // Refresh UI
             }

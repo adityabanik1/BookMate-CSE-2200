@@ -15,17 +15,18 @@ import java.util.List;
  * ============================================================
  * Week 11: Offline storage using SQLiteOpenHelper.
  *
- * Database : bookmate.db
+ * Database : bookmate.db (Version 2)
  * Table    : books
  * Columns  : id (PK, AUTO), title, author, publish_year,
- *            publisher, status ("WANT_TO_READ" | "FINISHED")
+ *            publisher, status ("WANT_TO_READ" | "FINISHED"),
+ *            last_read_position (INTEGER), read_url (TEXT)
  * ============================================================
  */
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     // ── Constants ─────────────────────────────────────────────
     private static final String DATABASE_NAME = "bookmate.db";
-    private static final int DATABASE_VERSION = 1;
+    private static final int DATABASE_VERSION = 2; // Incremented for reader columns
 
     private static final String TABLE_BOOKS = "books";
     private static final String COL_ID = "id";
@@ -34,6 +35,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_PUBLISH_YEAR = "publish_year";
     private static final String COL_PUBLISHER = "publisher";
     private static final String COL_STATUS = "status";
+    private static final String COL_LAST_READ_POSITION = "last_read_position";
+    private static final String COL_READ_URL = "read_url";
 
     // ── Constructor ───────────────────────────────────────────
     public DatabaseHelper(Context context) {
@@ -49,15 +52,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COL_AUTHOR + " TEXT, "
                 + COL_PUBLISH_YEAR + " TEXT, "
                 + COL_PUBLISHER + " TEXT, "
-                + COL_STATUS + " TEXT)";
+                + COL_STATUS + " TEXT, "
+                + COL_LAST_READ_POSITION + " INTEGER DEFAULT 0, "
+                + COL_READ_URL + " TEXT)";
         db.execSQL(createTable);
     }
 
-    // ── onUpgrade: Drop & recreate (simple for course demo) ──
+    // ── onUpgrade: Migrate schema gracefully ──────────────────
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_BOOKS);
-        onCreate(db);
+        if (oldVersion < 2) {
+            // Add reader support columns without wiping existing saved books
+            db.execSQL("ALTER TABLE " + TABLE_BOOKS + " ADD COLUMN " + COL_LAST_READ_POSITION + " INTEGER DEFAULT 0");
+            db.execSQL("ALTER TABLE " + TABLE_BOOKS + " ADD COLUMN " + COL_READ_URL + " TEXT");
+        }
     }
 
     // ── CRUD Operations ───────────────────────────────────────
@@ -74,6 +82,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COL_PUBLISH_YEAR, book.getPublishYear());
         values.put(COL_PUBLISHER, book.getPublisher());
         values.put(COL_STATUS, book.getStatus());
+        values.put(COL_LAST_READ_POSITION, book.getLastReadPosition());
+        values.put(COL_READ_URL, book.getReadUrl());
 
         // Check if book already exists by title
         Cursor cursor = db.query(TABLE_BOOKS, new String[]{COL_ID},
@@ -98,6 +108,28 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
+     * Updates only the reading progress (scroll position in pixels) of a saved book.
+     */
+    public void updateReadingProgress(int bookId, int position) {
+        if (bookId <= 0) return;
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COL_LAST_READ_POSITION, position);
+        db.update(TABLE_BOOKS, values, COL_ID + " = ?", new String[]{String.valueOf(bookId)});
+    }
+
+    /**
+     * Updates the status of a saved book (e.g., mark as "FINISHED").
+     */
+    public void updateBookStatus(int bookId, String status) {
+        if (bookId <= 0) return;
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COL_STATUS, status);
+        db.update(TABLE_BOOKS, values, COL_ID + " = ?", new String[]{String.valueOf(bookId)});
+    }
+
+    /**
      * Returns all books with the given status ("WANT_TO_READ" or "FINISHED").
      * If status is null, returns ALL saved books.
      */
@@ -107,7 +139,6 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         Cursor cursor;
         if (status == null) {
-            // Return all books
             cursor = db.query(TABLE_BOOKS, null, null, null,
                     null, null, COL_TITLE + " ASC");
         } else {
@@ -118,13 +149,27 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         if (cursor != null && cursor.moveToFirst()) {
             do {
+                int lastPos = 0;
+                int posColIndex = cursor.getColumnIndex(COL_LAST_READ_POSITION);
+                if (posColIndex != -1 && !cursor.isNull(posColIndex)) {
+                    lastPos = cursor.getInt(posColIndex);
+                }
+
+                String readUrl = null;
+                int urlColIndex = cursor.getColumnIndex(COL_READ_URL);
+                if (urlColIndex != -1 && !cursor.isNull(urlColIndex)) {
+                    readUrl = cursor.getString(urlColIndex);
+                }
+
                 Book book = new Book(
                         cursor.getInt(cursor.getColumnIndexOrThrow(COL_ID)),
                         cursor.getString(cursor.getColumnIndexOrThrow(COL_TITLE)),
                         cursor.getString(cursor.getColumnIndexOrThrow(COL_AUTHOR)),
                         cursor.getString(cursor.getColumnIndexOrThrow(COL_PUBLISH_YEAR)),
                         cursor.getString(cursor.getColumnIndexOrThrow(COL_PUBLISHER)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(COL_STATUS))
+                        cursor.getString(cursor.getColumnIndexOrThrow(COL_STATUS)),
+                        lastPos,
+                        readUrl
                 );
                 books.add(book);
             } while (cursor.moveToNext());
@@ -155,13 +200,27 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         Book book = null;
         if (cursor != null && cursor.moveToFirst()) {
+            int lastPos = 0;
+            int posColIndex = cursor.getColumnIndex(COL_LAST_READ_POSITION);
+            if (posColIndex != -1 && !cursor.isNull(posColIndex)) {
+                lastPos = cursor.getInt(posColIndex);
+            }
+
+            String readUrl = null;
+            int urlColIndex = cursor.getColumnIndex(COL_READ_URL);
+            if (urlColIndex != -1 && !cursor.isNull(urlColIndex)) {
+                readUrl = cursor.getString(urlColIndex);
+            }
+
             book = new Book(
                     cursor.getInt(cursor.getColumnIndexOrThrow(COL_ID)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_TITLE)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_AUTHOR)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_PUBLISH_YEAR)),
                     cursor.getString(cursor.getColumnIndexOrThrow(COL_PUBLISHER)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(COL_STATUS))
+                    cursor.getString(cursor.getColumnIndexOrThrow(COL_STATUS)),
+                    lastPos,
+                    readUrl
             );
         }
 

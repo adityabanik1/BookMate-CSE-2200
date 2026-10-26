@@ -111,30 +111,63 @@
 
             </LinearLayout>
 
-            <!-- Status badge (only shown if saved) -->
-            <TextView
-                android:id="@+id/tvDetailStatus"
-                android:layout_width="wrap_content"
+            <!-- Status badge & Reading Progress -->
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:orientation="horizontal"
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="24dp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
-                android:textSize="13sp"
-                android:textColor="@android:color/white"
-                android:background="@drawable/bg_badge"
-                android:visibility="gone" />
+                android:gravity="center_vertical">
 
-            <!-- Action Buttons -->
+                <TextView
+                    android:id="@+id/tvDetailStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:textSize="13sp"
+                    android:textColor="@android:color/white"
+                    android:background="@drawable/bg_badge"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/tvDetailReadingProgress"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="4dp"
+                    android:textSize="12sp"
+                    android:textColor="#333333"
+                    android:background="@drawable/bg_edit_text"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+
+            <!-- PRIMARY ACTION: Read Book Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnReadBook"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="12dp"
+                android:text="📖  Read Book"
+                android:textSize="16sp"
+                app:cornerRadius="8dp" />
+
+            <!-- Secondary Actions: Save / Finish / Delete -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnSaveWantToRead"
-                style="@style/Widget.MaterialComponents.Button"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="8dp"
-                android:text="📖  Save as Want to Read"
+                android:text="📌  Save as Want to Read"
                 android:textSize="15sp" />
 
             <com.google.android.material.button.MaterialButton

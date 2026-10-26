@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- ReaderActivity layout — Distraction-free native reading with appearance controls & in-app webview -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/layoutReaderRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FFFFFF"
+    tools:context=".ReaderActivity">
+
+    <!-- Top App Bar with back navigation, TTS button, and theme switcher -->
+    <com.google.android.material.appbar.MaterialToolbar
+        android:id="@+id/toolbarReader"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        app:title="Reading"
+        app:titleTextColor="@android:color/white"
+        app:subtitleTextColor="@android:color/white"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:navigationIconTint="@android:color/white">
+
+        <!-- Mode Toggle & Action Buttons inside Toolbar -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingEnd="8dp">
+
+            <!-- Text-to-Speech (TTS) Button -->
+            <ImageButton
+                android:id="@+id/btnTts"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_lock_silent_mode_off"
+                android:contentDescription="Listen to Book (Text-to-Speech)"
+                app:tint="@android:color/white" />
+
+            <!-- Theme Switcher (Light / Sepia / Dark) -->
+            <ImageButton
+                android:id="@+id/btnThemeToggle"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginStart="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_view"
+                android:contentDescription="Switch Reading Theme"
+                app:tint="@android:color/white" />
+
+            <!-- Web / Text Mode Toggle (shown if online link available) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnToggleMode"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:layout_marginStart="4dp"
+                android:textColor="@android:color/white"
+                android:text="Web View"
+                android:textSize="12sp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+    </com.google.android.material.appbar.MaterialToolbar>
+
+    <!-- Reading Progress Bar -->
+    <ProgressBar
+        android:id="@+id/progressBarReading"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="4dp"
+        android:max="100"
+        android:progress="0"
+        android:progressTint="?attr/colorSecondary" />
+
+    <!-- Content Area: Native Scrollable Text View or In-App WebView -->
+    <FrameLayout
+        android:id="@+id/containerContent"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <!-- Native Reader View -->
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/scrollReader"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:scrollbars="vertical">
+
+            <LinearLayout
+                android:id="@+id/layoutBookTextContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:paddingTop="24dp"
+                android:paddingBottom="48dp">
+
+                <!-- Header: Book Title & Author -->
+                <TextView
+                    android:id="@+id/tvReaderTitle"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Book Title"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:textColor="#1A1A1A"
+                    android:layout_marginBottom="4dp" />
+
+                <TextView
+                    android:id="@+id/tvReaderAuthor"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="by Author"
+                    android:textSize="15sp"
+                    android:textColor="#666666"
+                    android:layout_marginBottom="16dp" />
+
+                <!-- Divider -->
+                <View
+                    android:id="@+id/dividerReader"
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#E0E0E0"
+                    android:layout_marginBottom="20dp" />
+
+                <!-- Book Body Content -->
+                <TextView
+                    android:id="@+id/tvReaderContent"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Loading book content..."
+                    android:textSize="16sp"
+                    android:lineSpacingMultiplier="1.4"
+                    android:textColor="#222222"
+                    android:textIsSelectable="true" />
+
+            </LinearLayout>
+
+        </androidx.core.widget.NestedScrollView>
+
+        <!-- In-App WebView for Online Reader (Internet Archive / Open Library) -->
+        <WebView
+            android:id="@+id/webViewReader"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+    <!-- Bottom Appearance & Progress Controls Bar -->
+    <LinearLayout
+        android:id="@+id/layoutBottomControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:background="#F5F5F5">
+
+        <!-- Font Decrease Button (A-) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFontDecrease"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="48dp"
+            android:layout_height="38dp"
+            android:padding="0dp"
+            android:text="A-"
+            android:textSize="13sp" />
+
+        <!-- Font Size Indicator -->
+        <TextView
+            android:id="@+id/tvFontSize"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="8dp"
+            android:text="16sp"
+            android:textSize="13sp"
+            android:textColor="#333333" />
+
+        <!-- Font Increase Button (A+) -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnFontIncrease"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="48dp"
+            android:layout_height="38dp"
+            android:padding="0dp"
+            android:text="A+"
+            android:textSize="13sp" />
+
+        <!-- Spacer -->
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- Reading Progress Text Percentage -->
+        <TextView
+            android:id="@+id/tvProgressPercent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0% read"
+            android:textSize="13sp"
+            android:textColor="#555555" />
+
+    </LinearLayout>
+
+</LinearLayout>
