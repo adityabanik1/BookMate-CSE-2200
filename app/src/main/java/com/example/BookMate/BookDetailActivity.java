@@ -7,6 +7,7 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.appbar.MaterialToolbar;
@@ -105,7 +106,7 @@ public class BookDetailActivity extends AppCompatActivity {
      * reading progress, and enable the Delete button.
      */
     private void checkSavedStatus() {
-        Book savedBook = dbHelper.isBookSaved(book.getTitle());
+        Book savedBook = dbHelper.isBookSaved(book.getTitle(), book.getAuthor());
         if (savedBook != null) {
             // Book is already saved — update our local reference
             book.setId(savedBook.getId());
@@ -182,14 +183,22 @@ public class BookDetailActivity extends AppCompatActivity {
 
         // ── Delete from list (Week 11: SQLite Delete)
         btnDelete.setOnClickListener(v -> {
-            if (book.getId() > 0) {
-                dbHelper.deleteBook(book.getId());
-                book.setStatus(null);
-                book.setId(-1);
-                book.setLastReadPosition(0);
-                Toast.makeText(this, "Removed from your list", Toast.LENGTH_SHORT).show();
-                checkSavedStatus(); // Refresh UI
-            }
+            // Ask for confirmation before deleting
+            new AlertDialog.Builder(this)
+                    .setTitle("Delete book?")
+                    .setMessage("Remove \"" + book.getTitle() + "\" from your list?")
+                    .setPositiveButton("Delete", (dialog, which) -> {
+                        if (book.getId() > 0) {
+                            dbHelper.deleteBook(book.getId());
+                            book.setStatus(null);
+                            book.setId(-1);
+                            book.setLastReadPosition(0);
+                            Toast.makeText(this, "Removed from your list", Toast.LENGTH_SHORT).show();
+                            checkSavedStatus(); // Refresh UI
+                        }
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
         });
 
         // ── Share Recommendation (Week 8: Implicit Intent) ────

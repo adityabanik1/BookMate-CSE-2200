@@ -114,6 +114,17 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
                 progressBar.setVisibility(View.GONE);
                 recyclerSearchResults.setVisibility(View.VISIBLE);
 
+                if (results == null) {
+                    // Request failed → most likely no internet
+                    Toast.makeText(this, "Couldn't connect. Check your internet and try again.",
+                            Toast.LENGTH_LONG).show();
+                    tvSearchEmpty.setText("No internet connection.\nPlease check and try again.");
+                    tvSearchEmpty.setVisibility(View.VISIBLE);
+                    searchResults = new ArrayList<>();
+                    adapter.updateBooks(searchResults);
+                    return;
+                }
+
                 if (results.isEmpty()) {
                     tvSearchEmpty.setText("No results found for \"" + query + "\"");
                     tvSearchEmpty.setVisibility(View.VISIBLE);

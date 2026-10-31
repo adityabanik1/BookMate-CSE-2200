@@ -1,10 +1,12 @@
 package com.example.BookMate;
 
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.util.TypedValue;
 import android.view.View;
+import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -21,9 +23,14 @@ import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Locale;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * ============================================================
@@ -62,6 +69,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     private TextView tvReaderTitle, tvReaderAuthor, tvReaderContent, tvFontSize, tvProgressPercent;
     private View dividerReader;
     private ProgressBar progressBarReading;
+    private ProgressBar progressBarLoadingText;
     private ImageButton btnTts, btnThemeToggle;
     private MaterialButton btnToggleMode, btnFontDecrease, btnFontIncrease;
     private WebView webViewReader;
@@ -70,6 +78,9 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     private Book book;
     private DatabaseHelper dbHelper;
     private boolean isWebViewMode = false;
+    private boolean isSampleText = false; // true when showing the placeholder sample (not the real book)
+    private SharedPreferences prefs;
+    private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
     // ── Text-to-Speech (TTS) ──────────────────────────────────
     private TextToSpeech tts;
@@ -98,6 +109,13 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         // Initialize UI Views
         initViews();
 
+        // Restore saved reader settings (font size + theme)
+        prefs = getSharedPreferences("bookmate_prefs", MODE_PRIVATE);
+        currentFontSize = prefs.getInt("reader_font_size", 16);
+        currentTheme = prefs.getInt("reader_theme", THEME_LIGHT);
+        applyFontSize();
+        applyTheme(currentTheme, false);
+
         // Setup Toolbar with back navigation
         MaterialToolbar toolbar = findViewById(R.id.toolbarReader);
         toolbar.setTitle(book.getTitle());
@@ -125,6 +143,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         tvProgressPercent = findViewById(R.id.tvProgressPercent);
         dividerReader = findViewById(R.id.dividerReader);
         progressBarReading = findViewById(R.id.progressBarReading);
+        progressBarLoadingText = findViewById(R.id.progressBarLoadingText);
         btnTts = findViewById(R.id.btnTts);
         btnThemeToggle = findViewById(R.id.btnThemeToggle);
         btnToggleMode = findViewById(R.id.btnToggleMode);
@@ -145,30 +164,79 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     }
 
     // ═══════════════════════════════════════════════════════════
-    // Book Content Loading (Classics & Custom Samples)
+    // Book Content Loading (Assets, Local Cache & Dynamic Fetch)
     // ═══════════════════════════════════════════════════════════
 
     private void loadBookContent() {
-        String content = getBookTextFromAssets(book.getTitle());
+        // 1. Check for bundled classic books in assets
+        String assetContent = getBookTextFromAssets(book.getTitle());
+        if (assetContent != null) {
+            displayBookContent(assetContent);
+            return;
+        }
+
+        // 2. Check for previously cached text on local storage
+        File cacheFile = getBookCacheFile(book.getTitle());
+        if (cacheFile.exists()) {
+            String cachedText = readTextFromFile(cacheFile);
+            if (cachedText != null && !cachedText.trim().isEmpty()) {
+                displayBookContent(cachedText);
+                return;
+            }
+        }
+
+        // 3. Dynamically fetch free public domain text from Gutenberg / Archive.org
+        progressBarLoadingText.setVisibility(View.VISIBLE);
+        tvReaderContent.setText("Searching and downloading free book text from online public domain libraries...");
+
+        executorService.execute(() -> {
+            String fetchedText = NetworkUtils.fetchPublicDomainText(
+                    book.getTitle(), book.getAuthor(), book.getReadUrl());
+
+            runOnUiThread(() -> {
+                progressBarLoadingText.setVisibility(View.GONE);
+                if (fetchedText != null && !fetchedText.trim().isEmpty()) {
+                    writeTextToFile(cacheFile, fetchedText);
+                    displayBookContent(fetchedText);
+                } else {
+                    String fallback = buildLibraryEditionMessage();
+                    displayBookContent(fallback, true); // sample only, don't track progress
+                }
+            });
+        });
+    }
+
+    private void displayBookContent(String content) {
+        displayBookContent(content, false);
+    }
+
+    private void displayBookContent(String content, boolean sample) {
+        isSampleText = sample;
         tvReaderContent.setText(content);
 
-        // Restore saved scroll position after layout renders
+        // Restore saved position (stored as a PERCENT) after layout renders.
+        // Old data saved in pixels is > 100, so we ignore it.
         scrollReader.post(() -> {
-            if (book.getLastReadPosition() > 0) {
-                scrollReader.scrollTo(0, book.getLastReadPosition());
-                calculateAndDisplayProgress();
-                Toast.makeText(this, "Resumed where you left off", Toast.LENGTH_SHORT).show();
+            int savedPercent = book.getLastReadPosition();
+            if (!sample && savedPercent > 0 && savedPercent <= 100) {
+                View child = scrollReader.getChildAt(0);
+                int totalHeight = child.getHeight() - scrollReader.getHeight();
+                if (totalHeight > 0) {
+                    scrollReader.scrollTo(0, (int) ((long) totalHeight * savedPercent / 100));
+                    calculateAndDisplayProgress();
+                    Toast.makeText(this, "Resumed where you left off", Toast.LENGTH_SHORT).show();
+                }
             }
         });
     }
 
     /**
-     * Reads book content from assets based on title keyword match,
-     * falling back to the standard sample reader chapter.
+     * Reads book content from assets if matched to bundled classics.
+     * Returns null if no bundled match is found.
      */
     private String getBookTextFromAssets(String title) {
-        String fileName = "default_sample.txt";
         String lowerTitle = (title != null) ? title.toLowerCase() : "";
+        String fileName = null;
 
         if (lowerTitle.contains("alice")) {
             fileName = "alice_in_wonderland.txt";
@@ -178,6 +246,14 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
             fileName = "pride_and_prejudice.txt";
         }
 
+        if (fileName == null) {
+            return null;
+        }
+
+        return readAssetFile(fileName);
+    }
+
+    private String readAssetFile(String fileName) {
         StringBuilder builder = new StringBuilder();
         try {
             InputStream is = getAssets().open("books/" + fileName);
@@ -188,13 +264,59 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
             }
             reader.close();
             is.close();
+            return builder.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private File getBookCacheFile(String title) {
+        String safeName = "book_cache_" + Math.abs((title != null ? title : "").hashCode()) + ".txt";
+        return new File(getFilesDir(), safeName);
+    }
+
+    private String readTextFromFile(File file) {
+        try {
+            BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file)));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                sb.append(line).append("\n");
+            }
+            reader.close();
+            return sb.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void writeTextToFile(File file, String text) {
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            fos.write(text.getBytes("UTF-8"));
+            fos.close();
         } catch (Exception e) {
             e.printStackTrace();
-            builder.append("Welcome to ").append(book.getTitle()).append(" by ").append(book.getAuthor())
-                    .append(".\n\nEnjoy reading this book on Bookmate!");
         }
+    }
 
-        return builder.toString();
+    private String buildLibraryEditionMessage() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("📖 Online Library / Modern Edition\n\n");
+        sb.append("\"").append(book.getTitle()).append("\"");
+        if (book.getAuthor() != null && !book.getAuthor().isEmpty()) {
+            sb.append(" by ").append(book.getAuthor());
+        }
+        sb.append(" is a modern or copyrighted publication and is not in the free public domain text archive.\n\n");
+        if (book.getReadUrl() != null && !book.getReadUrl().isEmpty()) {
+            sb.append("👉 Tap 'Web View' in the top-right toolbar to read or preview this book online!\n\n");
+        }
+        sb.append("────────────────────────────────────────\n\n");
+        String sample = readAssetFile("default_sample.txt");
+        if (sample != null) {
+            sb.append(sample);
+        }
+        return sb.toString();
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -221,7 +343,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         // ── Theme Switcher (Light -> Sepia -> Dark -> Light) ──
         btnThemeToggle.setOnClickListener(v -> {
             currentTheme = (currentTheme + 1) % 3;
-            applyTheme(currentTheme);
+            applyTheme(currentTheme, true);
         });
 
         // ── Text-to-Speech (TTS) Toggle ───────────────────────
@@ -240,13 +362,14 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     private void applyFontSize() {
         tvReaderContent.setTextSize(TypedValue.COMPLEX_UNIT_SP, currentFontSize);
         tvFontSize.setText(currentFontSize + "sp");
+        prefs.edit().putInt("reader_font_size", currentFontSize).apply();
     }
 
     // ═══════════════════════════════════════════════════════════
     // Reading Appearance: Themes
     // ═══════════════════════════════════════════════════════════
 
-    private void applyTheme(int theme) {
+    private void applyTheme(int theme, boolean showToast) {
         int bgColor, textColor, subtextColor, bottomBgColor, dividerColor;
 
         switch (theme) {
@@ -256,7 +379,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
                 subtextColor = Color.parseColor("#7A654C");
                 bottomBgColor = Color.parseColor("#EFE4CB");
                 dividerColor = Color.parseColor("#D8C8AC");
-                Toast.makeText(this, "Sepia Theme", Toast.LENGTH_SHORT).show();
+                if (showToast) Toast.makeText(this, "Sepia Theme", Toast.LENGTH_SHORT).show();
                 break;
 
             case THEME_DARK:
@@ -265,7 +388,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
                 subtextColor = Color.parseColor("#9E9E9E");
                 bottomBgColor = Color.parseColor("#252525");
                 dividerColor = Color.parseColor("#383838");
-                Toast.makeText(this, "Dark Theme", Toast.LENGTH_SHORT).show();
+                if (showToast) Toast.makeText(this, "Dark Theme", Toast.LENGTH_SHORT).show();
                 break;
 
             case THEME_LIGHT:
@@ -275,7 +398,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
                 subtextColor = Color.parseColor("#666666");
                 bottomBgColor = Color.parseColor("#F5F5F5");
                 dividerColor = Color.parseColor("#E0E0E0");
-                Toast.makeText(this, "Light Theme", Toast.LENGTH_SHORT).show();
+                if (showToast) Toast.makeText(this, "Light Theme", Toast.LENGTH_SHORT).show();
                 break;
         }
 
@@ -288,6 +411,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         layoutBottomControls.setBackgroundColor(bottomBgColor);
         tvFontSize.setTextColor(textColor);
         tvProgressPercent.setTextColor(subtextColor);
+        prefs.edit().putInt("reader_theme", theme).apply();
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -306,9 +430,13 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
 
                 progressBarReading.setProgress(percent);
                 tvProgressPercent.setText(percent + "% read");
-                book.setLastReadPosition(scrollY);
 
-                // If user reached the end (>= 98%), auto-suggest finishing
+                // Sample text is not the real book: don't save progress or mark Finished
+                if (isSampleText) return;
+
+                book.setLastReadPosition(percent); // saved as a percent
+
+                // If user reached the end (>= 98%), mark as finished
                 if (percent >= 98 && !"FINISHED".equals(book.getStatus()) && book.getId() > 0) {
                     book.setStatus("FINISHED");
                     dbHelper.updateBookStatus(book.getId(), "FINISHED");
@@ -321,11 +449,17 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     @Override
     protected void onPause() {
         super.onPause();
-        // Save current scroll position to SQLite
-        if (book != null && book.getId() > 0) {
-            int currentScroll = scrollReader.getScrollY();
-            book.setLastReadPosition(currentScroll);
-            dbHelper.updateReadingProgress(book.getId(), currentScroll);
+        // Save current reading progress to SQLite
+        // (progress is stored as a percent, 0-100; skipped for the sample text)
+        if (book != null && book.getId() > 0 && !isSampleText) {
+            View child = scrollReader.getChildAt(0);
+            int totalHeight = (child != null) ? child.getHeight() - scrollReader.getHeight() : 0;
+            if (totalHeight > 0) {
+                int percent = (int) ((long) scrollReader.getScrollY() * 100 / totalHeight);
+                percent = Math.min(100, Math.max(0, percent));
+                book.setLastReadPosition(percent);
+                dbHelper.updateReadingProgress(book.getId(), percent);
+            }
         }
 
         // Stop speaking if active
@@ -403,9 +537,41 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
             WebSettings settings = webViewReader.getSettings();
             settings.setJavaScriptEnabled(true);
             settings.setDomStorageEnabled(true);
-            webViewReader.setWebViewClient(new WebViewClient());
-            webViewReader.loadUrl(book.getReadUrl());
+            settings.setUseWideViewPort(true);
+            settings.setLoadWithOverviewMode(true);
+            settings.setSupportZoom(true);
+            settings.setBuiltInZoomControls(true);
+            settings.setDisplayZoomControls(false);
+            settings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
+            // Setup loading progress for webview
+            progressBarReading.setVisibility(View.VISIBLE);
+            progressBarReading.setProgress(10);
+
+            webViewReader.setWebChromeClient(new WebChromeClient() {
+                @Override
+                public void onProgressChanged(WebView view, int newProgress) {
+                    if (isWebViewMode) {
+                        if (newProgress < 100) {
+                            progressBarReading.setVisibility(View.VISIBLE);
+                            progressBarReading.setProgress(newProgress);
+                        } else {
+                            progressBarReading.setVisibility(View.GONE);
+                        }
+                    }
+                }
+            });
+
+            webViewReader.setWebViewClient(new WebViewClient() {
+                @Override
+                public void onPageFinished(WebView view, String url) {
+                    if (isWebViewMode) {
+                        progressBarReading.setVisibility(View.GONE);
+                    }
+                }
+            });
+
+            webViewReader.loadUrl(book.getReadUrl());
             Toast.makeText(this, "Loading Online Book...", Toast.LENGTH_SHORT).show();
         } else {
             // Switch back to Native Text Reader
@@ -414,6 +580,8 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
             scrollReader.setVisibility(View.VISIBLE);
             layoutBottomControls.setVisibility(View.VISIBLE);
             btnToggleMode.setText("Web View");
+            progressBarReading.setVisibility(View.VISIBLE);
+            calculateAndDisplayProgress();
         }
     }
 
@@ -428,6 +596,9 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
 
     @Override
     protected void onDestroy() {
+        // Safe lifecycle cleanup for executor service
+        executorService.shutdownNow();
+
         // Safe lifecycle cleanup for Text-to-Speech
         if (tts != null) {
             tts.stop();

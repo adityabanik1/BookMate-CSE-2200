@@ -9,15 +9,37 @@
     android:background="@android:color/white"
     tools:context=".MainActivity">
 
-    <!-- Top App Bar -->
+    <!-- Top App Bar with Bookmate Logo -->
     <com.google.android.material.appbar.MaterialToolbar
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary"
-        app:title="Bookmate"
-        app:titleTextColor="@android:color/white"
-        app:subtitleTextColor="@android:color/white" />
+        android:background="?attr/colorPrimary">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_marginEnd="10dp"
+                android:src="@drawable/bookmate_logo"
+                android:contentDescription="Bookmate Logo" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Bookmate"
+                android:textColor="@android:color/white"
+                android:textSize="20sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+    </com.google.android.material.appbar.MaterialToolbar>
 
     <!-- Filter Tabs: Want to Read | Finished | All -->
     <LinearLayout
@@ -112,17 +134,33 @@
             android:clipToPadding="false"
             android:padding="8dp" />
 
-        <!-- Empty state text shown when no books saved -->
-        <TextView
-            android:id="@+id/tvEmptyState"
+        <!-- Empty state layout shown when no books saved -->
+        <LinearLayout
+            android:id="@+id/layoutEmptyState"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:text="No books yet.\nTap + to search and add books!"
-            android:textAlignment="center"
-            android:textColor="@android:color/darker_gray"
-            android:textSize="16sp"
-            android:visibility="gone" />
+            android:gravity="center"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <ImageView
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_marginBottom="16dp"
+                android:src="@drawable/bookmate_logo"
+                android:contentDescription="Bookmate Logo" />
+
+            <TextView
+                android:id="@+id/tvEmptyState"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="No books yet.\nTap + to search and add books!"
+                android:textAlignment="center"
+                android:textColor="@android:color/darker_gray"
+                android:textSize="16sp" />
+
+        </LinearLayout>
 
     </FrameLayout>
 

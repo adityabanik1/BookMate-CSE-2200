@@ -3,6 +3,7 @@ package com.example.BookMate;
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -47,7 +48,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
 
     // ── UI References ─────────────────────────────────────────
     private RecyclerView recyclerBooks;
-    private TextView tvEmptyState;
+    private View layoutEmptyState;
     private MaterialButton btnFilterAll, btnFilterWantToRead, btnFilterFinished;
     private MaterialButton btnTestReminder;
     private SwitchMaterial switchReminder;
@@ -58,6 +59,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     private List<Book> bookList;
     private DatabaseHelper dbHelper;
     private String currentFilter = null; // null = All
+    private SharedPreferences prefs;
 
     // ═══════════════════════════════════════════════════════════
     // Lifecycle — Week 8
@@ -74,7 +76,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
 
         // ── Initialize UI references ──────────────────────────
         recyclerBooks = findViewById(R.id.recyclerBooks);
-        tvEmptyState = findViewById(R.id.tvEmptyState);
+        layoutEmptyState = findViewById(R.id.layoutEmptyState);
         btnFilterAll = findViewById(R.id.btnFilterAll);
         btnFilterWantToRead = findViewById(R.id.btnFilterWantToRead);
         btnFilterFinished = findViewById(R.id.btnFilterFinished);
@@ -108,8 +110,14 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
             startActivity(intent);
         });
 
+        // ── Restore saved reminder switch state (SharedPreferences) ──
+        // Done BEFORE attaching the listener so it doesn't re-trigger the alarm.
+        prefs = getSharedPreferences("bookmate_prefs", MODE_PRIVATE);
+        switchReminder.setChecked(prefs.getBoolean("reminder_on", false));
+
         // ── Daily Reminder toggle (Week 10) ──────────────────
         switchReminder.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            prefs.edit().putBoolean("reminder_on", isChecked).apply();
             if (isChecked) {
                 requestNotificationPermissionAndSchedule();
             } else {
@@ -150,10 +158,10 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
 
         // Show/hide empty state (Week 9)
         if (bookList.isEmpty()) {
-            tvEmptyState.setVisibility(View.VISIBLE);
+            if (layoutEmptyState != null) layoutEmptyState.setVisibility(View.VISIBLE);
             recyclerBooks.setVisibility(View.GONE);
         } else {
-            tvEmptyState.setVisibility(View.GONE);
+            if (layoutEmptyState != null) layoutEmptyState.setVisibility(View.GONE);
             recyclerBooks.setVisibility(View.VISIBLE);
         }
 

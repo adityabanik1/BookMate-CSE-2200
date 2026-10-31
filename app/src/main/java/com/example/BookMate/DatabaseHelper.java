@@ -71,7 +71,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // ── CRUD Operations ───────────────────────────────────────
 
     /**
-     * Inserts a new book or updates an existing one (matched by title).
+     * Inserts a new book or updates an existing one (matched by title + author).
      * This lets the user change a book's status without creating duplicates.
      */
     public long addOrUpdateBook(Book book) {
@@ -85,9 +85,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COL_LAST_READ_POSITION, book.getLastReadPosition());
         values.put(COL_READ_URL, book.getReadUrl());
 
-        // Check if book already exists by title
+        // Check if book already exists (same title AND same author)
         Cursor cursor = db.query(TABLE_BOOKS, new String[]{COL_ID},
-                COL_TITLE + " = ?", new String[]{book.getTitle()},
+                COL_TITLE + " = ? AND " + COL_AUTHOR + " = ?",
+                new String[]{book.getTitle(), book.getAuthor()},
                 null, null, null);
 
         long result;
@@ -108,13 +109,13 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * Updates only the reading progress (scroll position in pixels) of a saved book.
+     * Updates only the reading progress (percent read, 0-100) of a saved book.
      */
-    public void updateReadingProgress(int bookId, int position) {
+    public void updateReadingProgress(int bookId, int percent) {
         if (bookId <= 0) return;
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
-        values.put(COL_LAST_READ_POSITION, position);
+        values.put(COL_LAST_READ_POSITION, percent);
         db.update(TABLE_BOOKS, values, COL_ID + " = ?", new String[]{String.valueOf(bookId)});
     }
 
@@ -189,13 +190,14 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * Checks whether a book with the given title is already saved.
+     * Checks whether a book with the given title and author is already saved.
      * Returns the Book if found, or null otherwise.
      */
-    public Book isBookSaved(String title) {
+    public Book isBookSaved(String title, String author) {
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.query(TABLE_BOOKS, null,
-                COL_TITLE + " = ?", new String[]{title},
+                COL_TITLE + " = ? AND " + COL_AUTHOR + " = ?",
+                new String[]{title, author},
                 null, null, null);
 
         Book book = null;

@@ -35,15 +35,15 @@ public class NetworkUtils {
      * MUST be called from a background thread.
      *
      * @param query The search term (title or author).
-     * @return A list of Book objects parsed from the API response.
+     * @return A list of Book objects, or null if the request failed (e.g. no internet).
      */
     public static List<Book> searchBooks(String query) {
-        List<Book> books = new ArrayList<>();
+        List<Book> books = null; // stays null if anything goes wrong
 
         try {
-            // Build the request URL with URL-encoded query
+            // Build the request URL with URL-encoded query and English language filter
             String encodedQuery = URLEncoder.encode(query, "UTF-8");
-            String urlString = BASE_URL + "?q=" + encodedQuery + "&limit=15";
+            String urlString = BASE_URL + "?q=" + encodedQuery + "&language=eng&limit=15";
             URL url = new URL(urlString);
 
             // Open connection
@@ -73,6 +73,7 @@ public class NetworkUtils {
 
         } catch (Exception e) {
             e.printStackTrace();
+            books = null; // network error
         }
 
         return books;
@@ -133,16 +134,43 @@ public class NetworkUtils {
                     }
                 }
 
-                // Extract direct reading URL (if available via Internet Archive or Open Library)
-                String readUrl = null;
-                if (bookJson.has("ia")) {
-                    JSONArray iaArray = bookJson.getJSONArray("ia");
-                    if (iaArray.length() > 0) {
-                        String iaId = iaArray.getString(0);
-                        readUrl = "https://archive.org/details/" + iaId + "/mode/2up";
+                // Check for Project Gutenberg direct ID
+                String gutenbergId = null;
+                if (bookJson.has("id_project_gutenberg")) {
+                    JSONArray pgArray = bookJson.getJSONArray("id_project_gutenberg");
+                    if (pgArray.length() > 0) {
+                        gutenbergId = pgArray.getString(0);
                     }
                 }
-                if (readUrl == null && bookJson.has("key")) {
+
+                // Extract Internet Archive identifier (preferring English scans)
+                String iaId = null;
+                if (bookJson.has("ia")) {
+                    JSONArray iaArray = bookJson.getJSONArray("ia");
+                    for (int j = 0; j < iaArray.length(); j++) {
+                        String candidate = iaArray.getString(j);
+                        String lower = candidate.toLowerCase();
+                        if (!lower.contains("_de") && !lower.contains("_fr") && !lower.contains("_ger")
+                                && !lower.contains("_fre") && !lower.contains("_spa") && !lower.contains("_ita")
+                                && !lower.contains("_rus")) {
+                            iaId = candidate;
+                            break;
+                        }
+                    }
+                    if (iaId == null && iaArray.length() > 0) {
+                        iaId = iaArray.getString(0);
+                    }
+                }
+
+                // Choose the best mobile-friendly reading URL
+                String readUrl = null;
+                if (gutenbergId != null && !gutenbergId.isEmpty()) {
+                    // Project Gutenberg clean mobile HTML view
+                    readUrl = "https://www.gutenberg.org/ebooks/" + gutenbergId + ".html.images";
+                } else if (iaId != null && !iaId.isEmpty()) {
+                    // Responsive single-page embedded Internet Archive reader
+                    readUrl = "https://archive.org/stream/" + iaId + "?ui=embed#mode/1up";
+                } else if (bookJson.has("key")) {
                     readUrl = "https://openlibrary.org" + bookJson.getString("key");
                 }
 
@@ -155,5 +183,192 @@ public class NetworkUtils {
         }
 
         return books;
+    }
+
+    /**
+     * Attempts to fetch full public domain text for a book.
+     * Strategy:
+     * 1. Direct Project Gutenberg link if in readUrl.
+     * 2. Gutendex API search for free public domain text.
+     * 3. Internet Archive OCR text if ia identifier exists.
+     *
+     * MUST be called from a background thread.
+     */
+    public static String fetchPublicDomainText(String title, String author, String readUrl) {
+        if (title == null || title.trim().isEmpty()) {
+            return null;
+        }
+
+        // 1. If readUrl is a Project Gutenberg link
+        if (readUrl != null && readUrl.contains("gutenberg.org/ebooks/")) {
+            try {
+                String pgId = readUrl.replaceAll(".*gutenberg\\.org/ebooks/([0-9]+).*", "$1");
+                if (pgId.matches("\\d+")) {
+                    String text = downloadTextFromUrl("https://www.gutenberg.org/cache/epub/" + pgId + "/pg" + pgId + ".txt", 150000);
+                    if (text == null) {
+                        text = downloadTextFromUrl("https://www.gutenberg.org/files/" + pgId + "/" + pgId + "-0.txt", 150000);
+                    }
+                    if (text != null && text.length() > 200) {
+                        return cleanBookText(text);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // 2. Query Gutendex API for free public domain books (English)
+        try {
+            String encodedTitle = URLEncoder.encode(title.trim(), "UTF-8");
+            String gutendexUrl = "https://gutendex.com/books/?search=" + encodedTitle + "&languages=en";
+            String jsonResponse = downloadTextFromUrl(gutendexUrl, 50000);
+            if (jsonResponse != null) {
+                JSONObject root = new JSONObject(jsonResponse);
+                if (root.has("results")) {
+                    JSONArray results = root.getJSONArray("results");
+                    if (results.length() > 0) {
+                        JSONObject firstBook = results.getJSONObject(0);
+                        if (firstBook.has("formats")) {
+                            JSONObject formats = firstBook.getJSONObject("formats");
+                            String textUrl = null;
+                            if (formats.has("text/plain; charset=utf-8")) {
+                                textUrl = formats.getString("text/plain; charset=utf-8");
+                            } else if (formats.has("text/plain; charset=us-ascii")) {
+                                textUrl = formats.getString("text/plain; charset=us-ascii");
+                            }
+
+                            if (textUrl != null) {
+                                String text = downloadTextFromUrl(textUrl, 150000);
+                                if (text != null && text.length() > 200) {
+                                    return cleanBookText(text);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // 3. Query Internet Archive OCR text if ia identifier exists
+        if (readUrl != null && readUrl.contains("archive.org/stream/")) {
+            try {
+                String temp = readUrl.substring(readUrl.indexOf("archive.org/stream/") + 19);
+                int qIndex = temp.indexOf("?");
+                if (qIndex != -1) temp = temp.substring(0, qIndex);
+                int hIndex = temp.indexOf("#");
+                if (hIndex != -1) temp = temp.substring(0, hIndex);
+                String iaId = temp.trim();
+
+                if (!iaId.isEmpty()) {
+                    String iaTextUrl = "https://archive.org/stream/" + iaId + "/" + iaId + "_djvu.txt";
+                    String text = downloadTextFromUrl(iaTextUrl, 150000);
+                    if (text != null && text.length() > 200) {
+                        return cleanBookText(text);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Downloads plain text from a URL following redirects up to 5 times.
+     */
+    public static String downloadTextFromUrl(String urlString, int maxChars) {
+        int redirects = 0;
+        while (redirects < 5 && urlString != null) {
+            HttpURLConnection connection = null;
+            try {
+                URL url = new URL(urlString);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(8000);
+                connection.setReadTimeout(8000);
+                connection.setInstanceFollowRedirects(true);
+                connection.setRequestProperty("User-Agent", "BookMateApp/1.0 (Android)");
+
+                int responseCode = connection.getResponseCode();
+
+                // Handle HTTP redirects (301, 302, 303, 307, 308)
+                if (responseCode == HttpURLConnection.HTTP_MOVED_PERM
+                        || responseCode == HttpURLConnection.HTTP_MOVED_TEMP
+                        || responseCode == HttpURLConnection.HTTP_SEE_OTHER
+                        || responseCode == 307
+                        || responseCode == 308) {
+                    String newUrl = connection.getHeaderField("Location");
+                    connection.disconnect();
+                    if (newUrl != null && !newUrl.isEmpty()) {
+                        urlString = newUrl;
+                        redirects++;
+                        continue;
+                    }
+                }
+
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(connection.getInputStream()));
+                    StringBuilder sb = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        sb.append(line).append("\n");
+                        if (sb.length() >= maxChars) {
+                            break;
+                        }
+                    }
+                    reader.close();
+                    return sb.toString();
+                }
+
+                return null;
+            } catch (Exception e) {
+                return null;
+            } finally {
+                if (connection != null) {
+                    connection.disconnect();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Cleans up Gutenberg/Archive boilerplate headers and footers.
+     */
+    public static String cleanBookText(String rawText) {
+        if (rawText == null) return null;
+        String text = rawText;
+
+        // Skip Gutenberg headers
+        int startIndex = text.indexOf("*** START OF THE PROJECT GUTENBERG");
+        if (startIndex == -1) {
+            startIndex = text.indexOf("*** START OF THIS PROJECT GUTENBERG");
+        }
+        if (startIndex != -1) {
+            int lineEnd = text.indexOf("\n", startIndex);
+            if (lineEnd != -1) {
+                text = text.substring(lineEnd + 1);
+            }
+        }
+
+        // Strip Gutenberg footer
+        int endIndex = text.indexOf("*** END OF THE PROJECT GUTENBERG");
+        if (endIndex == -1) {
+            endIndex = text.indexOf("*** END OF THIS PROJECT GUTENBERG");
+        }
+        if (endIndex != -1) {
+            text = text.substring(0, endIndex);
+        }
+
+        // Limit size to ~120,000 characters to keep TextView rendering blazing fast & responsive
+        if (text.length() > 120000) {
+            text = text.substring(0, 120000) + "\n\n[... End of preview section. Switch to Web View for complete edition ...]";
+        }
+
+        return text.trim();
     }
 }

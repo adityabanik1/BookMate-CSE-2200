@@ -29,7 +29,7 @@ public class Book implements Serializable {
     private String status;
 
     // Reading progress & online reader link
-    private int lastReadPosition; // Scroll offset (in pixels)
+    private int lastReadPosition; // Reading progress (percent, 0-100)
     private String readUrl;       // Online reader URL (e.g. Internet Archive/Open Library)
 
     // ── Constructors ──────────────────────────────────────────
