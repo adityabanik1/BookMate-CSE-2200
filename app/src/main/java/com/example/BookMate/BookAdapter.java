@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
@@ -22,6 +23,8 @@ import java.util.List;
  *
  * The adapter supports a click listener interface so that
  * Activities can handle item clicks to open BookDetailActivity.
+ * setUnsavedLabel() changes the badge shown on unsaved books
+ * ("Featured" for featured classics, "Online Result" for search).
  * ============================================================
  */
 public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder> {
@@ -29,6 +32,7 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
     // ── Data & Listener ───────────────────────────────────────
     private List<Book> bookList;
     private final OnBookClickListener listener;
+    private String unsavedLabel = "Online Result"; // badge text for books not saved yet
 
     /**
      * Callback interface — implemented by the hosting Activity
@@ -65,16 +69,17 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
         holder.tvYear.setText("Published: " + book.getPublishYear());
 
         // Set status badge text and color
+        // (colors come from res/values/colors.xml)
         String status = book.getStatus();
         if ("WANT_TO_READ".equals(status)) {
             holder.tvStatus.setText("Want to Read");
-            setBadgeColor(holder.tvStatus, 0xFF1976D2); // Blue
+            setBadgeColor(holder.tvStatus, R.color.badge_want_to_read); // Blue
         } else if ("FINISHED".equals(status)) {
             holder.tvStatus.setText("Finished");
-            setBadgeColor(holder.tvStatus, 0xFF388E3C); // Green
+            setBadgeColor(holder.tvStatus, R.color.badge_finished); // Green
         } else {
-            holder.tvStatus.setText("Online Result");
-            setBadgeColor(holder.tvStatus, 0xFF757575); // Grey
+            holder.tvStatus.setText(unsavedLabel);
+            setBadgeColor(holder.tvStatus, R.color.badge_online); // Grey
         }
 
         // Set click listener — passes the book to the Activity
@@ -96,10 +101,18 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
         notifyDataSetChanged();
     }
 
+    // ── Helper: Change the badge text for unsaved books ───────
+    public void setUnsavedLabel(String label) {
+        this.unsavedLabel = label;
+        notifyDataSetChanged();
+    }
+
     // ── Helper: Set badge background color programmatically ───
-    private void setBadgeColor(TextView badge, int color) {
+    // public static so BookDetailActivity can reuse it.
+    // colorResId is a color resource, e.g. R.color.badge_finished
+    public static void setBadgeColor(TextView badge, int colorResId) {
         GradientDrawable bg = (GradientDrawable) badge.getBackground().mutate();
-        bg.setColor(color);
+        bg.setColor(ContextCompat.getColor(badge.getContext(), colorResId));
     }
 
     // ═══════════════════════════════════════════════════════════

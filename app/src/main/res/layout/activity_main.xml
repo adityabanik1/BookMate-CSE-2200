@@ -14,7 +14,8 @@
         android:id="@+id/toolbar"
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
-        android:background="?attr/colorPrimary">
+        android:background="?attr/colorPrimary"
+        android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -40,6 +41,19 @@
         </LinearLayout>
 
     </com.google.android.material.appbar.MaterialToolbar>
+
+    <!-- Reading streak & stats: "🔥 3-day streak · 2 books finished" -->
+    <TextView
+        android:id="@+id/tvStats"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="10dp"
+        android:text="🔥 0-day streak · 0 books finished"
+        android:textColor="@color/brand_primary"
+        android:textSize="14sp"
+        android:textStyle="bold" />
 
     <!-- Filter Tabs: Want to Read | Finished | All -->
     <LinearLayout

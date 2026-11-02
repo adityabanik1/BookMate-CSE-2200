@@ -15,18 +15,21 @@ import java.util.List;
  * ============================================================
  * Week 11: Offline storage using SQLiteOpenHelper.
  *
- * Database : bookmate.db (Version 2)
+ * Database : bookmate.db (Version 3)
  * Table    : books
  * Columns  : id (PK, AUTO), title, author, publish_year,
  *            publisher, status ("WANT_TO_READ" | "FINISHED"),
  *            last_read_position (INTEGER), read_url (TEXT)
+ * Table    : quotes (added in Version 3 — Quotes & Notes)
+ * Columns  : id (PK, AUTO), quote_text, note, book_title,
+ *            book_author, created_at (INTEGER, millis)
  * ============================================================
  */
 public class DatabaseHelper extends SQLiteOpenHelper {
 
     // ── Constants ─────────────────────────────────────────────
     private static final String DATABASE_NAME = "bookmate.db";
-    private static final int DATABASE_VERSION = 2; // Incremented for reader columns
+    private static final int DATABASE_VERSION = 3; // 2: reader columns, 3: quotes table
 
     private static final String TABLE_BOOKS = "books";
     private static final String COL_ID = "id";
@@ -38,12 +41,20 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     private static final String COL_LAST_READ_POSITION = "last_read_position";
     private static final String COL_READ_URL = "read_url";
 
+    // Quotes table (Version 3) — also uses COL_ID as its primary key
+    private static final String TABLE_QUOTES = "quotes";
+    private static final String COL_QUOTE_TEXT = "quote_text";
+    private static final String COL_QUOTE_NOTE = "note";
+    private static final String COL_QUOTE_BOOK_TITLE = "book_title";
+    private static final String COL_QUOTE_BOOK_AUTHOR = "book_author";
+    private static final String COL_QUOTE_CREATED_AT = "created_at";
+
     // ── Constructor ───────────────────────────────────────────
     public DatabaseHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
-    // ── onCreate: Create the books table ──────────────────────
+    // ── onCreate: Create the books and quotes tables ──────────
     @Override
     public void onCreate(SQLiteDatabase db) {
         String createTable = "CREATE TABLE " + TABLE_BOOKS + " ("
@@ -56,6 +67,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COL_LAST_READ_POSITION + " INTEGER DEFAULT 0, "
                 + COL_READ_URL + " TEXT)";
         db.execSQL(createTable);
+        createQuotesTable(db);
     }
 
     // ── onUpgrade: Migrate schema gracefully ──────────────────
@@ -66,6 +78,24 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             db.execSQL("ALTER TABLE " + TABLE_BOOKS + " ADD COLUMN " + COL_LAST_READ_POSITION + " INTEGER DEFAULT 0");
             db.execSQL("ALTER TABLE " + TABLE_BOOKS + " ADD COLUMN " + COL_READ_URL + " TEXT");
         }
+        if (oldVersion < 3) {
+            // Add the quotes table — existing saved books are not touched
+            createQuotesTable(db);
+        }
+    }
+
+    /**
+     * Creates the quotes table. Called from onCreate (new installs)
+     * and onUpgrade (phones that already have Version 1 or 2).
+     */
+    private void createQuotesTable(SQLiteDatabase db) {
+        db.execSQL("CREATE TABLE " + TABLE_QUOTES + " ("
+                + COL_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, "
+                + COL_QUOTE_TEXT + " TEXT NOT NULL, "
+                + COL_QUOTE_NOTE + " TEXT, "
+                + COL_QUOTE_BOOK_TITLE + " TEXT, "
+                + COL_QUOTE_BOOK_AUTHOR + " TEXT, "
+                + COL_QUOTE_CREATED_AT + " INTEGER)");
     }
 
     // ── CRUD Operations ───────────────────────────────────────
@@ -150,29 +180,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         if (cursor != null && cursor.moveToFirst()) {
             do {
-                int lastPos = 0;
-                int posColIndex = cursor.getColumnIndex(COL_LAST_READ_POSITION);
-                if (posColIndex != -1 && !cursor.isNull(posColIndex)) {
-                    lastPos = cursor.getInt(posColIndex);
-                }
-
-                String readUrl = null;
-                int urlColIndex = cursor.getColumnIndex(COL_READ_URL);
-                if (urlColIndex != -1 && !cursor.isNull(urlColIndex)) {
-                    readUrl = cursor.getString(urlColIndex);
-                }
-
-                Book book = new Book(
-                        cursor.getInt(cursor.getColumnIndexOrThrow(COL_ID)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(COL_TITLE)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(COL_AUTHOR)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(COL_PUBLISH_YEAR)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(COL_PUBLISHER)),
-                        cursor.getString(cursor.getColumnIndexOrThrow(COL_STATUS)),
-                        lastPos,
-                        readUrl
-                );
-                books.add(book);
+                books.add(cursorToBook(cursor));
             } while (cursor.moveToNext());
         }
 
@@ -202,32 +210,40 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
         Book book = null;
         if (cursor != null && cursor.moveToFirst()) {
-            int lastPos = 0;
-            int posColIndex = cursor.getColumnIndex(COL_LAST_READ_POSITION);
-            if (posColIndex != -1 && !cursor.isNull(posColIndex)) {
-                lastPos = cursor.getInt(posColIndex);
-            }
-
-            String readUrl = null;
-            int urlColIndex = cursor.getColumnIndex(COL_READ_URL);
-            if (urlColIndex != -1 && !cursor.isNull(urlColIndex)) {
-                readUrl = cursor.getString(urlColIndex);
-            }
-
-            book = new Book(
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COL_ID)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(COL_TITLE)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(COL_AUTHOR)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(COL_PUBLISH_YEAR)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(COL_PUBLISHER)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(COL_STATUS)),
-                    lastPos,
-                    readUrl
-            );
+            book = cursorToBook(cursor);
         }
 
         if (cursor != null) cursor.close();
         return book;
+    }
+
+    /**
+     * Builds a Book from the cursor's current row.
+     * Shared by getBooksByStatus() and isBookSaved().
+     */
+    private Book cursorToBook(Cursor cursor) {
+        int lastPos = 0;
+        int posColIndex = cursor.getColumnIndex(COL_LAST_READ_POSITION);
+        if (posColIndex != -1 && !cursor.isNull(posColIndex)) {
+            lastPos = cursor.getInt(posColIndex);
+        }
+
+        String readUrl = null;
+        int urlColIndex = cursor.getColumnIndex(COL_READ_URL);
+        if (urlColIndex != -1 && !cursor.isNull(urlColIndex)) {
+            readUrl = cursor.getString(urlColIndex);
+        }
+
+        return new Book(
+                cursor.getInt(cursor.getColumnIndexOrThrow(COL_ID)),
+                cursor.getString(cursor.getColumnIndexOrThrow(COL_TITLE)),
+                cursor.getString(cursor.getColumnIndexOrThrow(COL_AUTHOR)),
+                cursor.getString(cursor.getColumnIndexOrThrow(COL_PUBLISH_YEAR)),
+                cursor.getString(cursor.getColumnIndexOrThrow(COL_PUBLISHER)),
+                cursor.getString(cursor.getColumnIndexOrThrow(COL_STATUS)),
+                lastPos,
+                readUrl
+        );
     }
 
     /**
@@ -242,5 +258,104 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         }
         if (cursor != null) cursor.close();
         return count;
+    }
+
+    // ── Quotes & Notes (Version 3) ────────────────────────────
+
+    /**
+     * Saves a new quote. Returns the new row ID, or -1 on error.
+     */
+    public long addQuote(Quote quote) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COL_QUOTE_TEXT, quote.getText());
+        values.put(COL_QUOTE_NOTE, quote.getNote());
+        values.put(COL_QUOTE_BOOK_TITLE, quote.getBookTitle());
+        values.put(COL_QUOTE_BOOK_AUTHOR, quote.getBookAuthor());
+        values.put(COL_QUOTE_CREATED_AT, quote.getCreatedAt());
+        return db.insert(TABLE_QUOTES, null, values);
+    }
+
+    /**
+     * Saves the quote only if it isn't on the phone yet (same text AND same
+     * saved time). Used by cloud Restore, so restoring twice doesn't create
+     * duplicates. Returns true if the quote was added.
+     */
+    public boolean addQuoteIfNew(Quote quote) {
+        if (quote.getText() == null) return false; // nothing to save
+
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(TABLE_QUOTES, new String[]{COL_ID},
+                COL_QUOTE_TEXT + " = ? AND " + COL_QUOTE_CREATED_AT + " = ?",
+                new String[]{quote.getText(), String.valueOf(quote.getCreatedAt())},
+                null, null, null);
+        boolean alreadySaved = (cursor != null && cursor.moveToFirst());
+        if (cursor != null) cursor.close();
+
+        if (alreadySaved) return false;
+        addQuote(quote);
+        return true;
+    }
+
+    /**
+     * Returns all saved quotes, newest first.
+     */
+    public List<Quote> getAllQuotes() {
+        List<Quote> quotes = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(TABLE_QUOTES, null, null, null,
+                null, null, COL_QUOTE_CREATED_AT + " DESC");
+
+        if (cursor != null && cursor.moveToFirst()) {
+            do {
+                quotes.add(cursorToQuote(cursor));
+            } while (cursor.moveToNext());
+        }
+
+        if (cursor != null) cursor.close();
+        return quotes;
+    }
+
+    /**
+     * Returns one random saved quote (for the daily reminder),
+     * or null if no quotes are saved yet.
+     */
+    public Quote getRandomQuote() {
+        SQLiteDatabase db = this.getReadableDatabase();
+        // Same as: SELECT * FROM quotes ORDER BY RANDOM() LIMIT 1
+        Cursor cursor = db.query(TABLE_QUOTES, null, null, null,
+                null, null, "RANDOM()", "1");
+
+        Quote quote = null;
+        if (cursor != null && cursor.moveToFirst()) {
+            quote = cursorToQuote(cursor);
+        }
+
+        if (cursor != null) cursor.close();
+        return quote;
+    }
+
+    /**
+     * Deletes a quote from the database by its ID.
+     */
+    public void deleteQuote(int id) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(TABLE_QUOTES, COL_ID + " = ?",
+                new String[]{String.valueOf(id)});
+    }
+
+    /**
+     * Builds a Quote from the cursor's current row.
+     * Shared by getAllQuotes() and getRandomQuote().
+     */
+    private Quote cursorToQuote(Cursor cursor) {
+        return new Quote(
+                cursor.getInt(cursor.getColumnIndexOrThrow(COL_ID)),
+                cursor.getString(cursor.getColumnIndexOrThrow(COL_QUOTE_TEXT)),
+                cursor.getString(cursor.getColumnIndexOrThrow(COL_QUOTE_NOTE)),
+                cursor.getString(cursor.getColumnIndexOrThrow(COL_QUOTE_BOOK_TITLE)),
+                cursor.getString(cursor.getColumnIndexOrThrow(COL_QUOTE_BOOK_AUTHOR)),
+                cursor.getLong(cursor.getColumnIndexOrThrow(COL_QUOTE_CREATED_AT))
+        );
     }
 }

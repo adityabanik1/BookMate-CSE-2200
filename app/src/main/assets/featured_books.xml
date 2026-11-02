@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Week 11: XML Parsing — Featured public-domain classics.
+    Read by FeaturedBooksParser using XmlPullParser.
+    gutenbergId (attribute) = Project Gutenberg ebook number.
+-->
+<books>
+
+    <book gutenbergId="1342">
+        <title>Pride and Prejudice</title>
+        <author>Jane Austen</author>
+        <year>1813</year>
+        <publisher>T. Egerton</publisher>
+    </book>
+
+    <book gutenbergId="11">
+        <title>Alice's Adventures in Wonderland</title>
+        <author>Lewis Carroll</author>
+        <year>1865</year>
+        <publisher>Macmillan</publisher>
+    </book>
+
+    <book gutenbergId="1661">
+        <title>The Adventures of Sherlock Holmes</title>
+        <author>Arthur Conan Doyle</author>
+        <year>1892</year>
+        <publisher>George Newnes</publisher>
+    </book>
+
+    <book gutenbergId="84">
+        <title>Frankenstein</title>
+        <author>Mary Shelley</author>
+        <year>1818</year>
+        <publisher>Lackington, Hughes, Harding, Mavor &amp; Jones</publisher>
+    </book>
+
+    <book gutenbergId="345">
+        <title>Dracula</title>
+        <author>Bram Stoker</author>
+        <year>1897</year>
+        <publisher>Archibald Constable and Company</publisher>
+    </book>
+
+    <book gutenbergId="2701">
+        <title>Moby-Dick</title>
+        <author>Herman Melville</author>
+        <year>1851</year>
+        <publisher>Harper &amp; Brothers</publisher>
+    </book>
+
+    <book gutenbergId="98">
+        <title>A Tale of Two Cities</title>
+        <author>Charles Dickens</author>
+        <year>1859</year>
+        <publisher>Chapman &amp; Hall</publisher>
+    </book>
+
+    <book gutenbergId="35">
+        <title>The Time Machine</title>
+        <author>H. G. Wells</author>
+        <year>1895</year>
+        <publisher>William Heinemann</publisher>
+    </book>
+
+</books>

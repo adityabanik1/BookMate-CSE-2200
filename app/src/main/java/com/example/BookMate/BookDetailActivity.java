@@ -1,7 +1,6 @@
 package com.example.BookMate;
 
 import android.content.Intent;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.TextView;
@@ -12,6 +11,12 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.database.FirebaseDatabase;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * ============================================================
@@ -23,6 +28,8 @@ import com.google.android.material.button.MaterialButton;
  * Week 11: Saves/updates/deletes books in SQLite database.
  * Reader : Launches ReaderActivity for distraction-free reading,
  *          displays persisted reading progress.
+ * Firebase: "Recommend" pushes the book to the Realtime Database
+ *          (/recommendations) so it shows up in CommunityActivity.
  * ============================================================
  */
 public class BookDetailActivity extends AppCompatActivity {
@@ -30,6 +37,7 @@ public class BookDetailActivity extends AppCompatActivity {
     // ── UI References ─────────────────────────────────────────
     private TextView tvTitle, tvAuthor, tvYear, tvPublisher, tvStatus, tvDetailReadingProgress;
     private MaterialButton btnReadBook, btnSaveWantToRead, btnSaveFinished, btnDelete, btnShare;
+    private MaterialButton btnRecommend;
 
     // ── Data ──────────────────────────────────────────────────
     private Book book;
@@ -71,6 +79,7 @@ public class BookDetailActivity extends AppCompatActivity {
         btnSaveFinished = findViewById(R.id.btnSaveFinished);
         btnDelete = findViewById(R.id.btnDelete);
         btnShare = findViewById(R.id.btnShare);
+        btnRecommend = findViewById(R.id.btnRecommend);
 
         // ── Populate book details ─────────────────────────────
         displayBookDetails();
@@ -120,10 +129,10 @@ public class BookDetailActivity extends AppCompatActivity {
             tvStatus.setVisibility(View.VISIBLE);
             if ("WANT_TO_READ".equals(book.getStatus())) {
                 tvStatus.setText("📖 Want to Read");
-                setBadgeColor(tvStatus, 0xFF1976D2);
+                BookAdapter.setBadgeColor(tvStatus, R.color.badge_want_to_read);
             } else if ("FINISHED".equals(book.getStatus())) {
                 tvStatus.setText("✅ Finished");
-                setBadgeColor(tvStatus, 0xFF388E3C);
+                BookAdapter.setBadgeColor(tvStatus, R.color.badge_finished);
             }
 
             // Show reading progress if started
@@ -212,11 +221,42 @@ public class BookDetailActivity extends AppCompatActivity {
             shareIntent.putExtra(Intent.EXTRA_TEXT, shareText);
             startActivity(Intent.createChooser(shareIntent, "Share via"));
         });
+
+        // ── Recommend to Community (Firebase Realtime Database)
+        btnRecommend.setOnClickListener(v -> recommendBook());
     }
 
-    // ── Helper: Set badge background color ────────────────────
-    private void setBadgeColor(TextView badge, int color) {
-        GradientDrawable bg = (GradientDrawable) badge.getBackground().mutate();
-        bg.setColor(color);
+    // ═══════════════════════════════════════════════════════════
+    // Firebase Realtime Database — Recommend
+    // ═══════════════════════════════════════════════════════════
+
+    /**
+     * Adds this book under /recommendations with push(), which creates
+     * a new child with a unique, time-ordered key.
+     */
+    private void recommendBook() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) {
+            Toast.makeText(this, "Please log in first", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        Map<String, Object> recommendation = new HashMap<>();
+        recommendation.put("title", book.getTitle());
+        recommendation.put("author", book.getAuthor());
+        recommendation.put("year", book.getPublishYear());
+        recommendation.put("recommendedBy", user.getEmail());
+
+        btnRecommend.setEnabled(false); // avoid double taps
+        FirebaseDatabase.getInstance().getReference("recommendations")
+                .push()
+                .setValue(recommendation)
+                .addOnSuccessListener(unused ->
+                        Toast.makeText(this, "Recommended to the community!", Toast.LENGTH_SHORT).show())
+                .addOnFailureListener(e -> {
+                    btnRecommend.setEnabled(true);
+                    Toast.makeText(this, "Couldn't recommend: " + e.getMessage(),
+                            Toast.LENGTH_LONG).show();
+                });
     }
 }

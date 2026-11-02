@@ -205,6 +205,15 @@
                 android:text="📤  Share Recommendation"
                 android:textSize="15sp" />
 
+            <!-- Realtime Database: recommend this book to the community -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRecommend"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="🌍  Recommend to Community"
+                android:textSize="15sp" />
+
         </LinearLayout>
 
     </ScrollView>

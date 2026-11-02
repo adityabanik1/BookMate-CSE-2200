@@ -20,6 +20,9 @@ import androidx.core.app.NotificationCompat;
  * - Creates a Notification Channel (required for Android 8.0+).
  * - Builds and shows the notification using NotificationCompat.
  * - Tapping the notification opens MainActivity.
+ * - Quote of the day (Week 11: SQLite): if the user has saved
+ *   quotes, one random quote is shown in the notification.
+ *   BigTextStyle shows the whole quote when it is expanded.
  * ============================================================
  */
 public class ReminderReceiver extends BroadcastReceiver {
@@ -39,16 +42,31 @@ public class ReminderReceiver extends BroadcastReceiver {
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 context, 0, openApp, PendingIntent.FLAG_IMMUTABLE);
 
-        // Step 3: Build the notification
+        // Step 3: Pick the text — a saved quote if there is one (Quote of the day)
+        String title = "📚 Bookmate Reminder";
+        String message = "Time to read! Open Bookmate and check your 'Want to Read' list.";
+
+        DatabaseHelper dbHelper = new DatabaseHelper(context);
+        Quote quote = dbHelper.getRandomQuote(); // null if no quotes are saved yet
+        dbHelper.close();
+
+        if (quote != null) {
+            title = "💬 Quote of the day — time to read!";
+            message = quote.getFormattedText(); // “quote” + "— Book, Author"
+        }
+
+        // Step 4: Build the notification
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(android.R.drawable.ic_dialog_info)
-                .setContentTitle("📚 Bookmate Reminder")
-                .setContentText("Time to read! Open Bookmate and check your 'Want to Read' list.")
+                .setContentTitle(title)
+                .setContentText(message)
+                // Shows the full text (not just one line) when the notification is expanded
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(message))
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true);
 
-        // Step 4: Show the notification
+        // Step 5: Show the notification
         NotificationManager manager =
                 (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         if (manager != null) {

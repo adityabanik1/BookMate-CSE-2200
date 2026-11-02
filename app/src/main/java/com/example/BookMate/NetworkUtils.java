@@ -19,16 +19,46 @@ import java.util.List;
  *          and parses the JSON response using org.json.
  *
  * API Endpoint : https://openlibrary.org/search.json?q={query}&limit=15
- * No API key required.
+ * Dictionary   : https://api.dictionaryapi.dev/api/v2/entries/en/{word}
+ *                (used by "Define" in the reader)
+ * No API key required for either.
  *
  * Threading  : This class performs BLOCKING network I/O.
- *              Callers must invoke searchBooks() on a background
- *              thread (via ExecutorService) — never on the main thread.
+ *              Callers must invoke searchBooks() / getDefinition() on a
+ *              background thread (via ExecutorService) — never on the main thread.
  * ============================================================
  */
 public class NetworkUtils {
 
     private static final String BASE_URL = "https://openlibrary.org/search.json";
+    private static final String DICTIONARY_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/";
+
+    /**
+     * Looks up a word in the Free Dictionary API.
+     * Returns e.g. "(noun) A large book...", or null if the word isn't
+     * found or there is no internet. MUST be called from a background thread.
+     *
+     * JSON structure (we only read the FIRST meaning):
+     * [ { "meanings": [ { "partOfSpeech": "noun",
+     *                     "definitions": [ { "definition": "..." } ] } ] } ]
+     */
+    public static String getDefinition(String word) {
+        try {
+            String url = DICTIONARY_URL + URLEncoder.encode(word, "UTF-8");
+            String json = downloadTextFromUrl(url, 500000); // common words have long answers
+            if (json == null) return null; // e.g. HTTP 404 = word not in the dictionary
+
+            // One step per level of the JSON shown above
+            JSONArray entries = new JSONArray(json);                                  // [ ... ]
+            JSONObject entry = entries.getJSONObject(0);                              // first entry
+            JSONObject meaning = entry.getJSONArray("meanings").getJSONObject(0);     // first meaning
+            JSONObject first = meaning.getJSONArray("definitions").getJSONObject(0);  // first definition
+            return "(" + meaning.getString("partOfSpeech") + ") " + first.getString("definition");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
 
     /**
      * Searches the Open Library API for books matching the query.
@@ -43,7 +73,9 @@ public class NetworkUtils {
         try {
             // Build the request URL with URL-encoded query and English language filter
             String encodedQuery = URLEncoder.encode(query, "UTF-8");
-            String urlString = BASE_URL + "?q=" + encodedQuery + "&language=eng&limit=15";
+            String urlString = BASE_URL + "?q=" + encodedQuery + "&language=eng&limit=15"
+                    // Only ask for the fields we actually use → smaller, faster response
+                    + "&fields=key,title,author_name,first_publish_year,publisher,ia,id_project_gutenberg,cover_i";
             URL url = new URL(urlString);
 
             // Open connection

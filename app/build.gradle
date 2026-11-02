@@ -1,5 +1,6 @@
 plugins {
     id 'com.android.application'
+    id 'com.google.gms.google-services' // Firebase
 }
 
 android {
@@ -43,6 +44,14 @@ dependencies {
 
     // RecyclerView for book lists
     implementation 'androidx.recyclerview:recyclerview:1.2.1'
+
+    // Firebase — the BoM (Bill of Materials) picks matching versions for all
+    // Firebase libraries, so the lines below don't need their own version numbers.
+    // 32.1.1 is used because it works with this project's compileSdk 33 / AGP 8.0.
+    implementation platform('com.google.firebase:firebase-bom:32.1.1')
+    implementation 'com.google.firebase:firebase-auth'      // Email/Password login
+    implementation 'com.google.firebase:firebase-firestore' // Cloud backup of books
+    implementation 'com.google.firebase:firebase-database'  // Realtime community recommendations
 
     // Test dependencies
     testImplementation 'junit:junit:4.13.2'

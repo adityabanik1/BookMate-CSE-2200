@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MainActivity toolbar menu — Quotes & Notes + Firebase options (shown in the ⋮ overflow menu) -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- SQLite: saved quotes, passages and lessons -->
+    <item
+        android:id="@+id/action_quotes"
+        android:title="Quotes &amp; notes"
+        app:showAsAction="never" />
+
+    <!-- Realtime Database: live community recommendations -->
+    <item
+        android:id="@+id/action_community"
+        android:title="Community picks"
+        app:showAsAction="never" />
+
+    <!-- Firestore: copy SQLite books + quotes to the cloud -->
+    <item
+        android:id="@+id/action_backup"
+        android:title="Back up to cloud"
+        app:showAsAction="never" />
+
+    <!-- Firestore: copy cloud books + quotes back into SQLite -->
+    <item
+        android:id="@+id/action_restore"
+        android:title="Restore from cloud"
+        app:showAsAction="never" />
+
+    <!-- Authentication: sign out -->
+    <item
+        android:id="@+id/action_logout"
+        android:title="Logout"
+        app:showAsAction="never" />
+
+</menu>

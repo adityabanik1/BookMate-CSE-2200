@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ProgressBar;
@@ -30,6 +31,9 @@ import java.util.concurrent.Executors;
  * Week 9 : RecyclerView with BookAdapter for search results.
  * Week 11: Networking (Open Library API) on a background thread
  *          using ExecutorService + Handler.
+ * Week 11: XML parsing — featured classics are read from
+ *          assets/featured_books.xml (FeaturedBooksParser) and
+ *          shown before the user searches.
  * ============================================================
  */
 public class SearchActivity extends AppCompatActivity implements BookAdapter.OnBookClickListener {
@@ -40,6 +44,7 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
     private ProgressBar progressBar;
     private RecyclerView recyclerSearchResults;
     private TextView tvSearchEmpty;
+    private TextView tvSectionLabel;
 
     // ── Data ──────────────────────────────────────────────────
     private BookAdapter adapter;
@@ -67,6 +72,7 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         progressBar = findViewById(R.id.progressBar);
         recyclerSearchResults = findViewById(R.id.recyclerSearchResults);
         tvSearchEmpty = findViewById(R.id.tvSearchEmpty);
+        tvSectionLabel = findViewById(R.id.tvSectionLabel);
 
         // ── Setup RecyclerView (Week 9) ───────────────────────
         searchResults = new ArrayList<>();
@@ -74,14 +80,53 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         recyclerSearchResults.setLayoutManager(new LinearLayoutManager(this));
         recyclerSearchResults.setAdapter(adapter);
 
+        // ── Show featured classics before searching (Week 11: XML)
+        showFeaturedBooks();
+
         // ── Search button click ───────────────────────────────
         btnSearch.setOnClickListener(v -> performSearch());
 
         // ── Handle keyboard "Search" action ───────────────────
+        // A physical Enter key sends both ACTION_DOWN and ACTION_UP,
+        // so only react to ACTION_DOWN (event is null for the soft keyboard).
         etSearchQuery.setOnEditorActionListener((v, actionId, event) -> {
-            performSearch();
+            if (event == null || event.getAction() == KeyEvent.ACTION_DOWN) {
+                performSearch();
+            }
             return true;
         });
+    }
+
+    @Override
+    protected void onDestroy() {
+        // Stop the background thread so it doesn't outlive the Activity
+        executor.shutdown();
+        super.onDestroy();
+    }
+
+    // ═══════════════════════════════════════════════════════════
+    // Featured Books — Week 11: XML Parsing
+    // ═══════════════════════════════════════════════════════════
+
+    /**
+     * Loads the featured classics from assets/featured_books.xml
+     * and shows them in the list with a "Featured" badge.
+     */
+    private void showFeaturedBooks() {
+        List<Book> featured = FeaturedBooksParser.parse(this);
+        if (featured.isEmpty()) {
+            // Nothing to show → keep the default "Search for books" hint
+            tvSectionLabel.setVisibility(View.GONE);
+            return;
+        }
+
+        tvSectionLabel.setText("✨ Featured classics — free to read");
+        tvSectionLabel.setVisibility(View.VISIBLE);
+        tvSearchEmpty.setVisibility(View.GONE);
+
+        searchResults = featured;
+        adapter.setUnsavedLabel("Featured");
+        adapter.updateBooks(searchResults);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -111,8 +156,16 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
 
             // Post results back to the MAIN thread via Handler
             mainHandler.post(() -> {
+                // The user may have left the screen while we were downloading
+                if (isFinishing() || isDestroyed()) return;
+
                 progressBar.setVisibility(View.GONE);
                 recyclerSearchResults.setVisibility(View.VISIBLE);
+
+                // From now on the list shows search results, not featured books
+                tvSectionLabel.setText("Results for \"" + query + "\"");
+                tvSectionLabel.setVisibility(View.VISIBLE);
+                adapter.setUnsavedLabel("Online Result");
 
                 if (results == null) {
                     // Request failed → most likely no internet
