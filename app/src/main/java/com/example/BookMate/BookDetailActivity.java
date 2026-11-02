@@ -176,6 +176,7 @@ public class BookDetailActivity extends AppCompatActivity {
 
         // ── Save as "Want to Read" (Week 11: SQLite Insert/Update)
         btnSaveWantToRead.setOnClickListener(v -> {
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
             book.setStatus("WANT_TO_READ");
             dbHelper.addOrUpdateBook(book);
             Toast.makeText(this, "Saved to 'Want to Read'", Toast.LENGTH_SHORT).show();
@@ -184,6 +185,7 @@ public class BookDetailActivity extends AppCompatActivity {
 
         // ── Save as "Finished" (Week 11: SQLite Insert/Update)
         btnSaveFinished.setOnClickListener(v -> {
+            v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
             book.setStatus("FINISHED");
             dbHelper.addOrUpdateBook(book);
             Toast.makeText(this, "Marked as 'Finished'", Toast.LENGTH_SHORT).show();

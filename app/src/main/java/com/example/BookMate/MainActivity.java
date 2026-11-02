@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.HapticFeedbackConstants;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -15,11 +16,13 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.google.firebase.auth.FirebaseAuth;
@@ -70,6 +73,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     private RecyclerView recyclerBooks;
     private View layoutEmptyState;
     private TextView tvStats;
+    private MaterialButtonToggleGroup toggleGroupFilter;
     private MaterialButton btnFilterAll, btnFilterWantToRead, btnFilterFinished;
     private MaterialButton btnTestReminder;
     private SwitchMaterial switchReminder;
@@ -125,6 +129,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         recyclerBooks = findViewById(R.id.recyclerBooks);
         layoutEmptyState = findViewById(R.id.layoutEmptyState);
         tvStats = findViewById(R.id.tvStats);
+        toggleGroupFilter = findViewById(R.id.toggleGroupFilter);
         btnFilterAll = findViewById(R.id.btnFilterAll);
         btnFilterWantToRead = findViewById(R.id.btnFilterWantToRead);
         btnFilterFinished = findViewById(R.id.btnFilterFinished);
@@ -137,20 +142,25 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         adapter = new BookAdapter(bookList, this);
         recyclerBooks.setLayoutManager(new LinearLayoutManager(this));
         recyclerBooks.setAdapter(adapter);
+        recyclerBooks.setItemAnimator(new DefaultItemAnimator());
 
         // ── Filter buttons (Week 9) ──────────────────────────
-        btnFilterAll.setOnClickListener(v -> {
-            currentFilter = null;
+        toggleGroupFilter.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) return;
+            group.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+            if (checkedId == R.id.btnFilterAll) {
+                currentFilter = null;
+    
+            } else if (checkedId == R.id.btnFilterWantToRead) {
+                currentFilter = "WANT_TO_READ";
+            } else if (checkedId == R.id.btnFilterFinished) {
+                currentFilter = "FINISHED";
+            }
             loadBooks();
         });
-        btnFilterWantToRead.setOnClickListener(v -> {
-            currentFilter = "WANT_TO_READ";
-            loadBooks();
-        });
-        btnFilterFinished.setOnClickListener(v -> {
-            currentFilter = "FINISHED";
-            loadBooks();
-        });
+
+
+
 
         // ── FAB → SearchActivity (Week 8: Explicit Intent) ───
         fabSearch.setOnClickListener(v -> {
@@ -165,6 +175,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
 
         // ── Daily Reminder toggle (Week 10) ──────────────────
         switchReminder.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            buttonView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
             prefs.edit().putBoolean("reminder_on", isChecked).apply();
             if (isChecked) {
                 if (ensureNotificationPermission(REQUEST_PERMISSION_SWITCH)) {
@@ -242,9 +253,11 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
      * Visually highlights the active filter button.
      */
     private void updateFilterButtonStates() {
-        btnFilterAll.setChecked(currentFilter == null);
-        btnFilterWantToRead.setChecked("WANT_TO_READ".equals(currentFilter));
-        btnFilterFinished.setChecked("FINISHED".equals(currentFilter));
+        int targetId = (currentFilter == null) ? R.id.btnFilterAll :
+                ("WANT_TO_READ".equals(currentFilter) ? R.id.btnFilterWantToRead : R.id.btnFilterFinished);
+        if (toggleGroupFilter.getCheckedButtonId() != targetId) {
+            toggleGroupFilter.check(targetId);
+        }
     }
 
     // ═══════════════════════════════════════════════════════════

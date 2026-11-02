@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Firebase Authentication: LoginActivity layout — email + password login -->
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -13,7 +14,8 @@
         android:layout_height="wrap_content"
         android:gravity="center"
         android:orientation="vertical"
-        android:padding="24dp">
+        android:padding="24dp"
+        android:animateLayoutChanges="true">
 
         <!-- Logo -->
         <ImageView
@@ -44,13 +46,13 @@
         <EditText
             android:id="@+id/etEmail"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="50dp"
             android:layout_marginBottom="12dp"
             android:background="@drawable/bg_edit_text"
             android:hint="Email"
             android:inputType="textEmailAddress"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
             android:singleLine="true"
             android:textSize="15sp" />
 
@@ -58,25 +60,27 @@
         <EditText
             android:id="@+id/etPassword"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
+            android:layout_height="50dp"
             android:layout_marginBottom="20dp"
             android:background="@drawable/bg_edit_text"
             android:hint="Password (at least 6 characters)"
             android:inputType="textPassword"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
             android:singleLine="true"
             android:textSize="15sp" />
 
-        <!-- Login button -->
+        <!-- Login button with modern corner radius and subtle shadow -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnLogin"
             style="@style/Widget.MaterialComponents.Button"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="10dp"
             android:text="Login"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            app:cornerRadius="12dp"
+            app:elevation="2dp" />
 
         <!-- Create account button -->
         <com.google.android.material.button.MaterialButton
@@ -85,7 +89,8 @@
             android:layout_width="match_parent"
             android:layout_height="52dp"
             android:text="Create account"
-            android:textSize="16sp" />
+            android:textSize="16sp"
+            app:cornerRadius="12dp" />
 
         <!-- Loading indicator -->
         <ProgressBar

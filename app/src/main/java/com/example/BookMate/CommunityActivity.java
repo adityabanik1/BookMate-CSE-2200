@@ -10,6 +10,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -72,6 +73,7 @@ public class CommunityActivity extends AppCompatActivity implements BookAdapter.
         adapter = new BookAdapter(new ArrayList<>(), this);
         adapter.setUnsavedLabel("Community");
         recyclerCommunity.setLayoutManager(new LinearLayoutManager(this));
+        recyclerCommunity.setItemAnimator(new DefaultItemAnimator());
         recyclerCommunity.setAdapter(adapter);
 
         recommendationsRef = FirebaseDatabase.getInstance().getReference("recommendations");

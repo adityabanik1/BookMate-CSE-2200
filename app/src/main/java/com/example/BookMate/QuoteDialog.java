@@ -72,6 +72,7 @@ public class QuoteDialog {
                     DatabaseHelper dbHelper = new DatabaseHelper(activity);
                     dbHelper.addQuote(quote);
                     dbHelper.close();
+                    activity.getWindow().getDecorView().performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
 
                     Toast.makeText(activity, "Quote saved 💬", Toast.LENGTH_SHORT).show();
                     if (onSaved != null) onSaved.run();

@@ -11,5 +11,16 @@
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+
+        <!-- Smooth Activity Transitions across the whole app -->
+        <item name="android:windowAnimationStyle">@style/WindowAnimation.BookMate</item>
+    </style>
+
+    <!-- Smooth slide and fade activity transitions -->
+    <style name="WindowAnimation.BookMate" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
+        <item name="android:activityOpenExitAnimation">@anim/slide_out_left</item>
+        <item name="android:activityCloseEnterAnimation">@anim/slide_in_left</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_out_right</item>
     </style>
 </resources>

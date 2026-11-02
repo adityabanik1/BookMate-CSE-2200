@@ -7,6 +7,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@android:color/white"
+    android:animateLayoutChanges="true"
     tools:context=".MainActivity">
 
     <!-- Top App Bar with Bookmate Logo -->
@@ -55,13 +56,17 @@
         android:textSize="14sp"
         android:textStyle="bold" />
 
-    <!-- Filter Tabs: Want to Read | Finished | All -->
-    <LinearLayout
+    <!-- Filter Tabs Toggle Group with smooth transitions -->
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/toggleGroupFilter"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="8dp"
-        android:gravity="center">
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        app:singleSelection="true"
+        app:selectionRequired="true">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnFilterAll"
@@ -69,7 +74,6 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginEnd="4dp"
             android:text="All"
             android:textSize="13sp" />
 
@@ -79,8 +83,6 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
-            android:layout_marginEnd="4dp"
             android:text="Want to Read"
             android:textSize="13sp" />
 
@@ -90,11 +92,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="4dp"
             android:text="Finished"
             android:textSize="13sp" />
 
-    </LinearLayout>
+    </com.google.android.material.button.MaterialButtonToggleGroup>
 
     <!-- Reminder toggle row -->
     <LinearLayout
@@ -139,7 +140,8 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:animateLayoutChanges="true">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerBooks"

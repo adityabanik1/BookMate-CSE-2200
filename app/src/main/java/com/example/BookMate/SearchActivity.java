@@ -1,17 +1,24 @@
 package com.example.BookMate;
 
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.HapticFeedbackConstants;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -40,6 +47,7 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
 
     // ── UI References ─────────────────────────────────────────
     private EditText etSearchQuery;
+    private ImageButton btnClearQuery;
     private MaterialButton btnSearch;
     private ProgressBar progressBar;
     private RecyclerView recyclerSearchResults;
@@ -68,23 +76,50 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         toolbar.setNavigationOnClickListener(v -> finish());
 
         etSearchQuery = findViewById(R.id.etSearchQuery);
+        btnClearQuery = findViewById(R.id.btnClearQuery);
         btnSearch = findViewById(R.id.btnSearch);
         progressBar = findViewById(R.id.progressBar);
         recyclerSearchResults = findViewById(R.id.recyclerSearchResults);
         tvSearchEmpty = findViewById(R.id.tvSearchEmpty);
         tvSectionLabel = findViewById(R.id.tvSectionLabel);
 
-        // ── Setup RecyclerView (Week 9) ───────────────────────
+        // ── Setup RecyclerView with smooth animations ─────────
         searchResults = new ArrayList<>();
         adapter = new BookAdapter(searchResults, this);
         recyclerSearchResults.setLayoutManager(new LinearLayoutManager(this));
+        recyclerSearchResults.setItemAnimator(new DefaultItemAnimator());
         recyclerSearchResults.setAdapter(adapter);
 
         // ── Show featured classics before searching (Week 11: XML)
         showFeaturedBooks();
 
+        // ── Live type bar observer & quick-clear ──────────────
+        etSearchQuery.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String query = (s != null) ? s.toString().trim() : "";
+                btnClearQuery.setVisibility(query.isEmpty() ? View.GONE : View.VISIBLE);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
+        btnClearQuery.setOnClickListener(v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+            etSearchQuery.setText("");
+            hideKeyboard();
+            showFeaturedBooks();
+        });
+
         // ── Search button click ───────────────────────────────
-        btnSearch.setOnClickListener(v -> performSearch());
+        btnSearch.setOnClickListener(v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+            performSearch();
+        });
 
         // ── Handle keyboard "Search" action ───────────────────
         // A physical Enter key sends both ACTION_DOWN and ACTION_UP,
@@ -144,6 +179,9 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
             return;
         }
 
+        // Dismiss keyboard smoothly so results are visible
+        hideKeyboard();
+
         // Show loading state
         progressBar.setVisibility(View.VISIBLE);
         tvSearchEmpty.setVisibility(View.GONE);
@@ -201,5 +239,16 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         Intent intent = new Intent(SearchActivity.this, BookDetailActivity.class);
         intent.putExtra("book", book); // Book implements Serializable
         startActivity(intent);
+    }
+
+    /** Smoothly dismisses the on-screen keyboard */
+    private void hideKeyboard() {
+        View view = this.getCurrentFocus();
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            if (imm != null) {
+                imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            }
+        }
     }
 }

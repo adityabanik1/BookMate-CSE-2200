@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Week 8 & 9: SearchActivity layout — Online book search UI -->
+<!-- Week 8 & 9: SearchActivity layout — Optimized Modern Search UI -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -7,6 +7,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@android:color/white"
+    android:animateLayoutChanges="true"
     tools:context=".SearchActivity">
 
     <!-- Top App Bar -->
@@ -20,44 +21,81 @@
         app:navigationIcon="@drawable/ic_arrow_back"
         app:navigationIconTint="@android:color/white" />
 
-    <!-- Search input row -->
+    <!-- Modern Search Input Bar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="12dp"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:animateLayoutChanges="true">
 
-        <EditText
-            android:id="@+id/etSearchQuery"
+        <!-- Unified Pill Container -->
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
             android:layout_marginEnd="8dp"
-            android:hint="Search by title or author..."
-            android:inputType="text"
-            android:imeOptions="actionSearch"
-            android:paddingStart="12dp"
-            android:paddingEnd="12dp"
-            android:background="@drawable/bg_edit_text"
-            android:textSize="15sp"
-            android:singleLine="true" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_search_bar"
+            android:paddingStart="14dp"
+            android:paddingEnd="8dp">
 
+            <!-- Search Icon -->
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_search"
+                android:contentDescription="Search Icon"
+                android:layout_marginEnd="8dp" />
+
+            <!-- Input EditText -->
+            <EditText
+                android:id="@+id/etSearchQuery"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@null"
+                android:hint="Title, author, or keyword..."
+                android:textColorHint="#FF9CA3AF"
+                android:textColor="@android:color/black"
+                android:inputType="text"
+                android:imeOptions="actionSearch"
+                android:textSize="15sp"
+                android:singleLine="true" />
+
+            <!-- Quick Clear Button (✕) -->
+            <ImageButton
+                android:id="@+id/btnClearQuery"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_clear"
+                android:contentDescription="Clear search"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- Search Action Button with subtle elevation -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnSearch"
+            style="@style/Widget.MaterialComponents.Button"
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:text="Search"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            app:cornerRadius="24dp"
+            app:elevation="2dp" />
 
     </LinearLayout>
 
-    <!-- Loading indicator -->
+    <!-- Smooth Loading Progress Bar -->
     <ProgressBar
         android:id="@+id/progressBar"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="4dp"
         android:indeterminate="true"
         android:visibility="gone" />
 
@@ -67,7 +105,7 @@
         android:layout_height="1dp"
         android:background="@color/divider_color" />
 
-    <!-- Week 11: Section label — "Featured classics" or "Results for ..." -->
+    <!-- Section label — "Featured classics" or "Results for ..." -->
     <TextView
         android:id="@+id/tvSectionLabel"
         android:layout_width="match_parent"
@@ -85,7 +123,8 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:animateLayoutChanges="true">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerSearchResults"
@@ -100,6 +139,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
+            android:padding="24dp"
             android:text="Search for books by title or author"
             android:textAlignment="center"
             android:textColor="@android:color/darker_gray"

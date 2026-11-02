@@ -8,6 +8,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -63,6 +64,7 @@ public class QuotesActivity extends AppCompatActivity implements QuoteAdapter.On
         tvQuotesEmpty = findViewById(R.id.tvQuotesEmpty);
         adapter = new QuoteAdapter(new ArrayList<>(), this);
         recyclerQuotes.setLayoutManager(new LinearLayoutManager(this));
+        recyclerQuotes.setItemAnimator(new DefaultItemAnimator());
         recyclerQuotes.setAdapter(adapter);
 
         // ── + button: add a quote or note by hand ─────────────

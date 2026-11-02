@@ -7,6 +7,7 @@
     android:layout_height="match_parent"
     android:orientation="vertical"
     android:background="@android:color/white"
+    android:animateLayoutChanges="true"
     tools:context=".QuotesActivity">
 
     <!-- Top App Bar -->
@@ -23,7 +24,8 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="1"
+        android:animateLayoutChanges="true">
 
         <!-- Week 9: list of saved quotes (extra bottom padding so the + button doesn't cover the last card) -->
         <androidx.recyclerview.widget.RecyclerView
