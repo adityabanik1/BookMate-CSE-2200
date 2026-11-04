@@ -79,6 +79,32 @@
 
     </com.google.android.material.appbar.MaterialToolbar>
 
+    <LinearLayout
+        android:id="@+id/layoutOnlineNotice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="8dp"
+        android:background="#F5F5F5"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Some editions offer previews only. Check the book page for full access or borrowing options."
+            android:textColor="#333333"
+            android:textSize="12sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOpenWebsite"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Open in browser" />
+    </LinearLayout>
+
     <!-- Reading Progress Bar -->
     <ProgressBar
         android:id="@+id/progressBarReading"
@@ -150,6 +176,8 @@
                     android:text="Loading book content..."
                     android:textSize="16sp"
                     android:lineSpacingMultiplier="1.4"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
                     android:textColor="#222222"
                     android:textIsSelectable="true" />
 
@@ -173,6 +201,41 @@
             android:visibility="gone" />
 
     </FrameLayout>
+
+    <!-- Sections keep long books readable without one oversized TextView. -->
+    <LinearLayout
+        android:id="@+id/layoutSectionControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPreviousSection"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Previous" />
+
+        <TextView
+            android:id="@+id/tvSection"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textColor="#333333"
+            android:textSize="13sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNextSection"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Next" />
+    </LinearLayout>
 
     <!-- Bottom Appearance & Progress Controls Bar -->
     <LinearLayout

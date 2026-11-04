@@ -115,6 +115,7 @@ public class BookDetailActivity extends AppCompatActivity {
      * reading progress, and enable the Delete button.
      */
     private void checkSavedStatus() {
+        if (book == null || dbHelper == null) return;
         Book savedBook = dbHelper.isBookSaved(book.getTitle(), book.getAuthor());
         if (savedBook != null) {
             // Book is already saved — update our local reference
@@ -153,6 +154,8 @@ public class BookDetailActivity extends AppCompatActivity {
             btnDelete.setVisibility(View.GONE);
             btnReadBook.setText("📖  Start Reading");
         }
+        findViewById(R.id.btnBorrowOnline).setVisibility(
+                LoanTarget.fromUrl(book.getReadUrl()) != null ? View.VISIBLE : View.GONE);
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -160,6 +163,11 @@ public class BookDetailActivity extends AppCompatActivity {
     // ═══════════════════════════════════════════════════════════
 
     private void setupButtonListeners() {
+        findViewById(R.id.btnBorrowOnline).setOnClickListener(v -> {
+            Intent intent = new Intent(this, BorrowActivity.class);
+            intent.putExtra("book", book);
+            startActivity(intent);
+        });
 
         // ── Direct Reading: Launch ReaderActivity ─────────────
         btnReadBook.setOnClickListener(v -> {

@@ -1,6 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Theme.BookMate" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <!-- App screens use light surfaces; the reader manages its own three themes. -->
+    <style name="Theme.BookMate" parent="Theme.MaterialComponents.Light.DarkActionBar">
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/brand_primary</item>
         <item name="colorPrimaryVariant">@color/brand_primary_dark</item>
@@ -11,9 +12,16 @@
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="editTextStyle">@style/Widget.BookMate.EditText</item>
 
         <!-- Smooth Activity Transitions across the whole app -->
         <item name="android:windowAnimationStyle">@style/WindowAnimation.BookMate</item>
+    </style>
+
+    <style name="Widget.BookMate.EditText" parent="Widget.AppCompat.EditText">
+        <item name="android:textColor">#1A1A1A</item>
+        <item name="android:textColorHint">#666666</item>
+        <item name="android:textColorHighlight">#665B2EA6</item>
     </style>
 
     <!-- Smooth slide and fade activity transitions -->

@@ -28,6 +28,8 @@
         <!-- Firebase Auth: Login Activity (Launcher) — email + password -->
         <activity
             android:name=".LoginActivity"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -58,6 +60,11 @@
         <!-- Reader Activity — Direct reading experience -->
         <activity
             android:name=".ReaderActivity"
+            android:exported="false" />
+
+        <!-- Provider-hosted sign-in and verified online book loans -->
+        <activity
+            android:name=".BorrowActivity"
             android:exported="false" />
 
         <!-- Quotes & Notes — saved passages and lessons (SQLite) -->

@@ -68,7 +68,7 @@
             android:layout_marginTop="6dp"
             android:text="Saved 1 Jan 2026"
             android:textSize="11sp"
-            android:textColor="#FF9CA3AF" />
+            android:textColor="#FF666666" />
 
     </LinearLayout>
 

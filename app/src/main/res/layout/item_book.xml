@@ -79,7 +79,7 @@
             android:layout_marginTop="3dp"
             android:text="Published: N/A"
             android:textSize="12sp"
-            android:textColor="#FF9CA3AF" />
+            android:textColor="#FF666666" />
 
     </LinearLayout>
 

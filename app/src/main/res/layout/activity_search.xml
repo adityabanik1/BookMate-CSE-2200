@@ -58,7 +58,7 @@
                 android:layout_weight="1"
                 android:background="@null"
                 android:hint="Title, author, or keyword..."
-                android:textColorHint="#FF9CA3AF"
+                android:textColorHint="#FF666666"
                 android:textColor="@android:color/black"
                 android:inputType="text"
                 android:imeOptions="actionSearch"

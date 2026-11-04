@@ -32,6 +32,7 @@ public class NetworkUtils {
 
     private static final String BASE_URL = "https://openlibrary.org/search.json";
     private static final String DICTIONARY_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/";
+    private static final int MAX_BOOK_CHARS = 10000000;
 
     /**
      * Looks up a word in the Free Dictionary API.
@@ -75,7 +76,7 @@ public class NetworkUtils {
             String encodedQuery = URLEncoder.encode(query, "UTF-8");
             String urlString = BASE_URL + "?q=" + encodedQuery + "&language=eng&limit=15"
                     // Only ask for the fields we actually use → smaller, faster response
-                    + "&fields=key,title,author_name,first_publish_year,publisher,ia,id_project_gutenberg,cover_i";
+                    + "&fields=key,title,author_name,first_publish_year,publisher,ia,lending_identifier,id_project_gutenberg,cover_i";
             URL url = new URL(urlString);
 
             // Open connection
@@ -195,13 +196,16 @@ public class NetworkUtils {
                 }
 
                 // Choose the best mobile-friendly reading URL
+                // Prefer the provider's designated lending edition over an arbitrary scan.
+                String lendingId = bookJson.optString("lending_identifier", "");
+                if (lendingId.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,199}")) iaId = lendingId;
                 String readUrl = null;
                 if (gutenbergId != null && !gutenbergId.isEmpty()) {
                     // Project Gutenberg clean mobile HTML view
                     readUrl = "https://www.gutenberg.org/ebooks/" + gutenbergId + ".html.images";
                 } else if (iaId != null && !iaId.isEmpty()) {
-                    // Responsive single-page embedded Internet Archive reader
-                    readUrl = "https://archive.org/stream/" + iaId + "?ui=embed#mode/1up";
+                    // The full page shows access restrictions and borrowing controls.
+                    readUrl = "https://archive.org/details/" + iaId;
                 } else if (bookJson.has("key")) {
                     readUrl = "https://openlibrary.org" + bookJson.getString("key");
                 }
@@ -236,9 +240,9 @@ public class NetworkUtils {
             try {
                 String pgId = readUrl.replaceAll(".*gutenberg\\.org/ebooks/([0-9]+).*", "$1");
                 if (pgId.matches("\\d+")) {
-                    String text = downloadTextFromUrl("https://www.gutenberg.org/cache/epub/" + pgId + "/pg" + pgId + ".txt", 150000);
+                    String text = downloadTextFromUrl("https://www.gutenberg.org/cache/epub/" + pgId + "/pg" + pgId + ".txt", MAX_BOOK_CHARS);
                     if (text == null) {
-                        text = downloadTextFromUrl("https://www.gutenberg.org/files/" + pgId + "/" + pgId + "-0.txt", 150000);
+                        text = downloadTextFromUrl("https://www.gutenberg.org/files/" + pgId + "/" + pgId + "-0.txt", MAX_BOOK_CHARS);
                     }
                     if (text != null && text.length() > 200) {
                         return cleanBookText(text);
@@ -270,7 +274,7 @@ public class NetworkUtils {
                             }
 
                             if (textUrl != null) {
-                                String text = downloadTextFromUrl(textUrl, 150000);
+                                String text = downloadTextFromUrl(textUrl, MAX_BOOK_CHARS);
                                 if (text != null && text.length() > 200) {
                                     return cleanBookText(text);
                                 }
@@ -284,18 +288,15 @@ public class NetworkUtils {
         }
 
         // 3. Query Internet Archive OCR text if ia identifier exists
-        if (readUrl != null && readUrl.contains("archive.org/stream/")) {
+        if (readUrl != null && (readUrl.contains("archive.org/stream/")
+                || readUrl.contains("archive.org/details/"))) {
             try {
-                String temp = readUrl.substring(readUrl.indexOf("archive.org/stream/") + 19);
-                int qIndex = temp.indexOf("?");
-                if (qIndex != -1) temp = temp.substring(0, qIndex);
-                int hIndex = temp.indexOf("#");
-                if (hIndex != -1) temp = temp.substring(0, hIndex);
-                String iaId = temp.trim();
+                String[] path = new URL(readUrl).getPath().split("/");
+                String iaId = path.length > 2 ? path[2] : "";
 
                 if (!iaId.isEmpty()) {
                     String iaTextUrl = "https://archive.org/stream/" + iaId + "/" + iaId + "_djvu.txt";
-                    String text = downloadTextFromUrl(iaTextUrl, 150000);
+                    String text = downloadTextFromUrl(iaTextUrl, MAX_BOOK_CHARS);
                     if (text != null && text.length() > 200) {
                         return cleanBookText(text);
                     }
@@ -309,7 +310,8 @@ public class NetworkUtils {
     }
 
     /**
-     * Downloads plain text from a URL following redirects up to 5 times.
+     * Downloads a complete text response. Oversized responses fail rather than
+     * silently returning the beginning of a book as though it were complete.
      */
     public static String downloadTextFromUrl(String urlString, int maxChars) {
         int redirects = 0;
@@ -335,22 +337,27 @@ public class NetworkUtils {
                     String newUrl = connection.getHeaderField("Location");
                     connection.disconnect();
                     if (newUrl != null && !newUrl.isEmpty()) {
-                        urlString = newUrl;
+                        urlString = new URL(url, newUrl).toString();
                         redirects++;
                         continue;
                     }
                 }
 
                 if (responseCode == HttpURLConnection.HTTP_OK) {
+                    String contentType = connection.getContentType();
+                    if (contentType != null && contentType.toLowerCase(java.util.Locale.ROOT)
+                            .contains("text/html")) return null;
                     BufferedReader reader = new BufferedReader(
-                            new InputStreamReader(connection.getInputStream()));
+                            new InputStreamReader(connection.getInputStream(), "UTF-8"));
                     StringBuilder sb = new StringBuilder();
-                    String line;
-                    while ((line = reader.readLine()) != null) {
-                        sb.append(line).append("\n");
-                        if (sb.length() >= maxChars) {
-                            break;
+                    char[] buffer = new char[8192];
+                    int count;
+                    while ((count = reader.read(buffer)) != -1) {
+                        if (sb.length() + count > maxChars) {
+                            reader.close();
+                            return null;
                         }
+                        sb.append(buffer, 0, count);
                     }
                     reader.close();
                     return sb.toString();
@@ -373,7 +380,7 @@ public class NetworkUtils {
      */
     public static String cleanBookText(String rawText) {
         if (rawText == null) return null;
-        String text = rawText;
+        String text = rawText.replace("\r\n", "\n").replace('\r', '\n');
 
         // Skip Gutenberg headers
         int startIndex = text.indexOf("*** START OF THE PROJECT GUTENBERG");
@@ -394,11 +401,6 @@ public class NetworkUtils {
         }
         if (endIndex != -1) {
             text = text.substring(0, endIndex);
-        }
-
-        // Limit size to ~120,000 characters to keep TextView rendering blazing fast & responsive
-        if (text.length() > 120000) {
-            text = text.substring(0, 120000) + "\n\n[... End of preview section. Switch to Web View for complete edition ...]";
         }
 
         return text.trim();
