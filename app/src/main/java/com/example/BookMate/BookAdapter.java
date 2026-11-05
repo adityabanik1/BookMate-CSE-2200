@@ -99,11 +99,13 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
             setBadgeColor(holder.tvStatus, R.color.badge_online); // Grey
         }
 
-        // Set click listener — passes the book to the Activity
+        // Set click listener — passes the book to the Activity with fluid tactile click
         holder.itemView.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onBookClick(book);
-            }
+            UiUtils.animateClick(v, () -> {
+                if (listener != null) {
+                    listener.onBookClick(book);
+                }
+            });
         });
     }
 

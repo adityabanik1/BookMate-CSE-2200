@@ -5,7 +5,9 @@ import android.content.Intent;
 import android.content.ActivityNotFoundException;
 import android.net.Uri;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import androidx.core.content.ContextCompat;
 import android.speech.tts.TextToSpeech;
 import android.text.Layout;
 import android.text.Spannable;
@@ -88,7 +90,8 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     private ProgressBar progressBarReading;
     private ProgressBar progressBarLoadingText;
     private ImageButton btnTts, btnThemeToggle, btnFind;
-    private MaterialButton btnToggleMode, btnFontDecrease, btnFontIncrease;
+    private ImageButton btnFontDecrease, btnFontIncrease;
+    private MaterialButton btnToggleMode, btnThemeQuickToggle;
     private WebView webViewReader;
     private View layoutSectionControls, layoutOnlineNotice;
     private TextView tvSection;
@@ -161,7 +164,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         // Setup Toolbar with back navigation
         MaterialToolbar toolbar = findViewById(R.id.toolbarReader);
         toolbar.setTitle(book.getTitle());
-        toolbar.setNavigationOnClickListener(v -> finish());
+        toolbar.setNavigationOnClickListener(v -> UiUtils.animateClick(v, this::finish));
 
         // Initialize Android Text-to-Speech Engine
         tts = new TextToSpeech(this, this);
@@ -192,14 +195,13 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         btnToggleMode = findViewById(R.id.btnToggleMode);
         btnFontDecrease = findViewById(R.id.btnFontDecrease);
         btnFontIncrease = findViewById(R.id.btnFontIncrease);
+        btnThemeQuickToggle = findViewById(R.id.btnThemeQuickToggle);
         webViewReader = findViewById(R.id.webViewReader);
         layoutSectionControls = findViewById(R.id.layoutSectionControls);
         layoutOnlineNotice = findViewById(R.id.layoutOnlineNotice);
         tvSection = findViewById(R.id.tvSection);
         btnPreviousSection = findViewById(R.id.btnPreviousSection);
         btnNextSection = findViewById(R.id.btnNextSection);
-        btnPreviousSection.setOnClickListener(v -> showSection(currentSection - 1, 0));
-        btnNextSection.setOnClickListener(v -> showSection(currentSection + 1, 0));
         findViewById(R.id.btnOpenWebsite).setOnClickListener(v -> {
             try {
                 startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(getOnlineReadingUrl())));
@@ -210,7 +212,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
 
         tvReaderTitle.setText(book.getTitle());
         tvReaderAuthor.setText("by " + book.getAuthor());
-        tvFontSize.setText(currentFontSize + "sp");
+        tvFontSize.setText(currentFontSize + " sp");
 
         // Show "Web View" toggle button if an online reader URL exists
         if (book.getReadUrl() != null && !book.getReadUrl().isEmpty()) {
@@ -413,35 +415,58 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
 
     private void setupListeners() {
 
-        // ── Font Size Controls (A- / A+) ──────────────────────
+        // ── Font Size Controls Stepper (Fluid & Clicky) ───────
         btnFontDecrease.setOnClickListener(v -> {
-            if (currentFontSize > MIN_FONT_SIZE) {
-                currentFontSize -= 2;
-                applyFontSize();
-            }
+            UiUtils.animateClick(v, () -> {
+                if (currentFontSize > MIN_FONT_SIZE) {
+                    currentFontSize -= 2;
+                    applyFontSize();
+                    UiUtils.pulse(tvFontSize);
+                }
+            });
         });
 
         btnFontIncrease.setOnClickListener(v -> {
-            if (currentFontSize < MAX_FONT_SIZE) {
-                currentFontSize += 2;
-                applyFontSize();
-            }
+            UiUtils.animateClick(v, () -> {
+                if (currentFontSize < MAX_FONT_SIZE) {
+                    currentFontSize += 2;
+                    applyFontSize();
+                    UiUtils.pulse(tvFontSize);
+                }
+            });
         });
 
-        // ── Theme Switcher (Light -> Sepia -> Dark -> Light) ──
+        // ── Theme Switcher in Toolbar ─────────────────────────
         btnThemeToggle.setOnClickListener(v -> {
-            currentTheme = (currentTheme + 1) % 3;
-            applyTheme(currentTheme, true);
+            UiUtils.animateClick(v, () -> {
+                currentTheme = (currentTheme + 1) % 3;
+                applyTheme(currentTheme, true);
+            });
         });
+
+        // ── Theme Quick Switcher in Bottom Bar ────────────────
+        if (btnThemeQuickToggle != null) {
+            btnThemeQuickToggle.setOnClickListener(v -> {
+                UiUtils.animateClick(v, () -> {
+                    // Quick toggle between White and Dark directly
+                    currentTheme = (currentTheme == THEME_LIGHT) ? THEME_DARK : THEME_LIGHT;
+                    applyTheme(currentTheme, true);
+                });
+            });
+        }
 
         // ── Text-to-Speech (TTS) Toggle ───────────────────────
-        btnTts.setOnClickListener(v -> toggleTextToSpeech());
+        btnTts.setOnClickListener(v -> UiUtils.animateClick(v, this::toggleTextToSpeech));
 
         // ── Mode Toggle (Native Text vs In-App WebView) ───────
-        btnToggleMode.setOnClickListener(v -> toggleReaderMode());
+        btnToggleMode.setOnClickListener(v -> UiUtils.animateClick(v, this::toggleReaderMode));
 
         // ── Find in book (🔍) ─────────────────────────────────
-        btnFind.setOnClickListener(v -> showFindDialog());
+        btnFind.setOnClickListener(v -> UiUtils.animateClick(v, this::showFindDialog));
+
+        // ── Section controls ──────────────────────────────────
+        btnPreviousSection.setOnClickListener(v -> UiUtils.animateClick(v, () -> showSection(currentSection - 1, 0)));
+        btnNextSection.setOnClickListener(v -> UiUtils.animateClick(v, () -> showSection(currentSection + 1, 0)));
 
         // ── Save quote / Define / Read aloud in the text-selection menu
         setupSelectionMenu();
@@ -455,44 +480,79 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
 
     private void applyFontSize() {
         tvReaderContent.setTextSize(TypedValue.COMPLEX_UNIT_SP, currentFontSize);
-        tvFontSize.setText(currentFontSize + "sp");
+        tvFontSize.setText(currentFontSize + " sp");
         prefs.edit().putInt("reader_font_size", currentFontSize).apply();
+
+        // Fluid interactive opacity and enabled state
+        btnFontDecrease.setEnabled(currentFontSize > MIN_FONT_SIZE);
+        btnFontDecrease.setAlpha(currentFontSize > MIN_FONT_SIZE ? 1.0f : 0.35f);
+
+        btnFontIncrease.setEnabled(currentFontSize < MAX_FONT_SIZE);
+        btnFontIncrease.setAlpha(currentFontSize < MAX_FONT_SIZE ? 1.0f : 0.35f);
     }
 
     // ═══════════════════════════════════════════════════════════
-    // Reading Appearance: Themes
+    // Reading Appearance: Themes (White, Dark, Sepia)
     // ═══════════════════════════════════════════════════════════
 
     private void applyTheme(int theme, boolean showToast) {
-        int bgColor, textColor, subtextColor, bottomBgColor, dividerColor;
+        int bgColor, textColor, subtextColor, bottomBgColor, dividerColor, capsuleBg;
+        MaterialToolbar toolbar = findViewById(R.id.toolbarReader);
 
         switch (theme) {
+            case THEME_DARK:
+                bgColor = Color.parseColor("#121212");
+                textColor = Color.parseColor("#E2E8F0");
+                subtextColor = Color.parseColor("#94A3B8");
+                bottomBgColor = Color.parseColor("#1E1E1E");
+                dividerColor = Color.parseColor("#2D3748");
+                capsuleBg = Color.parseColor("#2D3748");
+                btnThemeToggle.setImageResource(R.drawable.ic_light_mode);
+                btnThemeToggle.setContentDescription("Switch to White Theme");
+                if (btnThemeQuickToggle != null) {
+                    btnThemeQuickToggle.setText("☀️ White");
+                    btnThemeQuickToggle.setTextColor(Color.parseColor("#F8FAFC"));
+                }
+                if (toolbar != null) toolbar.setBackgroundColor(Color.parseColor("#181818"));
+                getWindow().setStatusBarColor(Color.parseColor("#121212"));
+                if (showToast) Toast.makeText(this, "🌙 Dark Theme", Toast.LENGTH_SHORT).show();
+                break;
+
             case THEME_SEPIA:
                 bgColor = Color.parseColor("#FBF0D9");
                 textColor = Color.parseColor("#433422");
                 subtextColor = Color.parseColor("#7A654C");
                 bottomBgColor = Color.parseColor("#EFE4CB");
                 dividerColor = Color.parseColor("#D8C8AC");
-                if (showToast) Toast.makeText(this, "Sepia Theme", Toast.LENGTH_SHORT).show();
-                break;
-
-            case THEME_DARK:
-                bgColor = Color.parseColor("#181818");
-                textColor = Color.parseColor("#E4E4E4");
-                subtextColor = Color.parseColor("#9E9E9E");
-                bottomBgColor = Color.parseColor("#252525");
-                dividerColor = Color.parseColor("#383838");
-                if (showToast) Toast.makeText(this, "Dark Theme", Toast.LENGTH_SHORT).show();
+                capsuleBg = Color.parseColor("#D8C8AC");
+                btnThemeToggle.setImageResource(R.drawable.ic_dark_mode);
+                btnThemeToggle.setContentDescription("Switch Reading Theme");
+                if (btnThemeQuickToggle != null) {
+                    btnThemeQuickToggle.setText("☀️ White");
+                    btnThemeQuickToggle.setTextColor(Color.parseColor("#433422"));
+                }
+                if (toolbar != null) toolbar.setBackgroundColor(Color.parseColor("#4E342E"));
+                getWindow().setStatusBarColor(Color.parseColor("#3E2723"));
+                if (showToast) Toast.makeText(this, "📜 Sepia Theme", Toast.LENGTH_SHORT).show();
                 break;
 
             case THEME_LIGHT:
             default:
                 bgColor = Color.parseColor("#FFFFFF");
-                textColor = Color.parseColor("#1A1A1A");
-                subtextColor = Color.parseColor("#666666");
-                bottomBgColor = Color.parseColor("#F5F5F5");
-                dividerColor = Color.parseColor("#E0E0E0");
-                if (showToast) Toast.makeText(this, "Light Theme", Toast.LENGTH_SHORT).show();
+                textColor = Color.parseColor("#1A202C");
+                subtextColor = Color.parseColor("#64748B");
+                bottomBgColor = Color.parseColor("#F8FAFC");
+                dividerColor = Color.parseColor("#E2E8F0");
+                capsuleBg = Color.parseColor("#E2E8F0");
+                btnThemeToggle.setImageResource(R.drawable.ic_dark_mode);
+                btnThemeToggle.setContentDescription("Switch to Dark Theme");
+                if (btnThemeQuickToggle != null) {
+                    btnThemeQuickToggle.setText("🌙 Dark");
+                    btnThemeQuickToggle.setTextColor(Color.parseColor("#334155"));
+                }
+                if (toolbar != null) toolbar.setBackgroundColor(ContextCompat.getColor(this, R.color.brand_primary));
+                getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.brand_primary_dark));
+                if (showToast) Toast.makeText(this, "☀️ White Theme", Toast.LENGTH_SHORT).show();
                 break;
         }
 
@@ -508,8 +568,13 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         tvSection.setTextColor(textColor);
         btnPreviousSection.setTextColor(textColor);
         btnNextSection.setTextColor(textColor);
-        btnFontDecrease.setTextColor(textColor);
-        btnFontIncrease.setTextColor(textColor);
+
+        View capsule = findViewById(R.id.layoutFontSizeCapsule);
+        if (capsule != null && capsule.getBackground() instanceof GradientDrawable) {
+            ((GradientDrawable) capsule.getBackground().mutate()).setColor(capsuleBg);
+        }
+        btnFontDecrease.setColorFilter(textColor);
+        btnFontIncrease.setColorFilter(textColor);
         prefs.edit().putInt("reader_theme", theme).apply();
     }
 

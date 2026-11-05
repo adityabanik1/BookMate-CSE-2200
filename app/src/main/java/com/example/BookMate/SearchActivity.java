@@ -78,7 +78,7 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
 
         // ── Initialize UI ─────────────────────────────────────
         MaterialToolbar toolbar = findViewById(R.id.toolbarSearch);
-        toolbar.setNavigationOnClickListener(v -> finish());
+        toolbar.setNavigationOnClickListener(v -> UiUtils.animateClick(v, this::finish));
 
         etSearchQuery = findViewById(R.id.etSearchQuery);
         btnClearQuery = findViewById(R.id.btnClearQuery);
@@ -137,18 +137,14 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
             public void afterTextChanged(Editable s) {}
         });
 
-        btnClearQuery.setOnClickListener(v -> {
-            v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+        btnClearQuery.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             etSearchQuery.setText("");
             hideKeyboard();
             showFeaturedBooks();
-        });
+        }));
 
         // ── Search button click ───────────────────────────────
-        btnSearch.setOnClickListener(v -> {
-            v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
-            performSearch();
-        });
+        btnSearch.setOnClickListener(v -> UiUtils.animateClick(v, this::performSearch));
 
         // ── Handle keyboard "Search" action ───────────────────
         etSearchQuery.setOnEditorActionListener((v, actionId, event) -> {

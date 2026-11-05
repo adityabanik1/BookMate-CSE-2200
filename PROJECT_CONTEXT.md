@@ -354,3 +354,20 @@ Sources inspected:
 - Distinct color-coded status and provider badges in [`BookAdapter.java`](file:///c:/Users/ASUS/AndroidStudioProjects/BookMate/app/src/main/java/com/example/BookMate/BookAdapter.java) (`badge_gutenberg`: #0D9488 Teal, `badge_open_library`: #6D28D9 Purple, `badge_featured`: #D97706 Amber).
 - [`BookDetailActivity.java`](file:///c:/Users/ASUS/AndroidStudioProjects/BookMate/app/src/main/java/com/example/BookMate/BookDetailActivity.java) identifies Gutenberg books and displays `"📗 Free Full-Text Ebook"` with a `"📖 Read Full Book"` action button that opens directly in BookMate's native reader.
 - Verification: offline unit tests (`testDebugUnitTest`) and APK packaging (`assembleDebug`) passed with 100% success.
+
+### UI Fluidity, Tactile Controls, Font Stepper & Reader Theming — 2026-11-06
+
+- **Tactile Micro-interactions (`UiUtils.java`):**
+  - Added unified `UiUtils.animateClick(view, runnable)` delivering an iOS/Material-like scale-down (0.92x) and spring-bounce animation on every button press with accompanying haptic feedback (`KEYBOARD_TAP`).
+  - Added `UiUtils.pulse(view)` to provide immediate visual punch-zoom feedback on text values / indicators when changed.
+  - Integrated across all primary interactive surfaces: `MainActivity` (FAB, reminder test, book items), `SearchActivity` (search, clear query, back), `BookDetailActivity` (read, save want-to-read, save finished, delete, share, recommend, borrow online), and `ReaderActivity` (theme toggle, font size stepper, text/web toggle, TTS, find, navigation).
+- **Redesigned Font Size Stepper Capsule:**
+  - Replaced plain text buttons with a sleek rounded capsule container (`bg_stepper_capsule.xml`, `layoutFontSizeCapsule`).
+  - Houses interactive vector icon buttons (`ic_text_decrease.xml`, `ic_text_increase.xml`) and a central live size indicator (`tvFontSize`, e.g., "16 sp").
+  - Bounds enforced dynamically (12sp to 26sp): stepper buttons dim to 35% opacity and disable when limits are reached, and the indicator pulses visually on each step.
+- **Comprehensive Dark & White Theme Support (`ReaderActivity.java`):**
+  - Added quick one-tap toggle (`btnThemeQuickToggle`) between White (☀️ Day) and Dark (🌙 Night) modes directly in the bottom reading bar, alongside full 3-way rotation (Light / Dark / Sepia).
+  - Dynamic runtime theming updates: toolbar background, window status bar color, reader background, typography color (#1A202C on White, #E2E8F0 on Dark, #2D241E on Sepia), divider colors, font stepper capsule surface, and button tints.
+- **Verification:**
+  - Unit tests (`.\gradlew.bat testDebugUnitTest`): 26/26 tests passed.
+  - Debug APK compilation (`.\gradlew.bat assembleDebug`): 100% successful.

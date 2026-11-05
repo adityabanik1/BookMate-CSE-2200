@@ -57,7 +57,7 @@ public class BookDetailActivity extends AppCompatActivity {
 
         // ── Toolbar with back navigation ──────────────────────
         MaterialToolbar toolbar = findViewById(R.id.toolbarDetail);
-        toolbar.setNavigationOnClickListener(v -> finish());
+        toolbar.setNavigationOnClickListener(v -> UiUtils.animateClick(v, this::finish));
 
         // ── Initialize database helper (Week 11) ──────────────
         dbHelper = new DatabaseHelper(this);
@@ -184,14 +184,14 @@ public class BookDetailActivity extends AppCompatActivity {
     // ═══════════════════════════════════════════════════════════
 
     private void setupButtonListeners() {
-        findViewById(R.id.btnBorrowOnline).setOnClickListener(v -> {
+        findViewById(R.id.btnBorrowOnline).setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             Intent intent = new Intent(this, BorrowActivity.class);
             intent.putExtra("book", book);
             startActivity(intent);
-        });
+        }));
 
         // ── Direct Reading: Launch ReaderActivity ─────────────
-        btnReadBook.setOnClickListener(v -> {
+        btnReadBook.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             // Auto-save to "WANT_TO_READ" if not saved yet so progress can be tracked
             if (!book.isSaved()) {
                 book.setStatus("WANT_TO_READ");
@@ -201,28 +201,26 @@ public class BookDetailActivity extends AppCompatActivity {
             Intent readerIntent = new Intent(BookDetailActivity.this, ReaderActivity.class);
             readerIntent.putExtra("book", book);
             startActivity(readerIntent);
-        });
+        }));
 
         // ── Save as "Want to Read" (Week 11: SQLite Insert/Update)
-        btnSaveWantToRead.setOnClickListener(v -> {
-            v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+        btnSaveWantToRead.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             book.setStatus("WANT_TO_READ");
             dbHelper.addOrUpdateBook(book);
             Toast.makeText(this, "Saved to 'Want to Read'", Toast.LENGTH_SHORT).show();
             checkSavedStatus(); // Refresh UI
-        });
+        }));
 
         // ── Save as "Finished" (Week 11: SQLite Insert/Update)
-        btnSaveFinished.setOnClickListener(v -> {
-            v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
+        btnSaveFinished.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             book.setStatus("FINISHED");
             dbHelper.addOrUpdateBook(book);
             Toast.makeText(this, "Marked as 'Finished'", Toast.LENGTH_SHORT).show();
             checkSavedStatus(); // Refresh UI
-        });
+        }));
 
         // ── Delete from list (Week 11: SQLite Delete)
-        btnDelete.setOnClickListener(v -> {
+        btnDelete.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             // Ask for confirmation before deleting
             new AlertDialog.Builder(this)
                     .setTitle("Delete book?")
@@ -239,10 +237,10 @@ public class BookDetailActivity extends AppCompatActivity {
                     })
                     .setNegativeButton("Cancel", null)
                     .show();
-        });
+        }));
 
         // ── Share Recommendation (Week 8: Implicit Intent) ────
-        btnShare.setOnClickListener(v -> {
+        btnShare.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             String shareText = "Check out this book on Bookmate: "
                     + book.getTitle() + " by " + book.getAuthor()
                     + " (Published: " + book.getPublishYear() + ")";
@@ -251,10 +249,10 @@ public class BookDetailActivity extends AppCompatActivity {
             shareIntent.setType("text/plain");
             shareIntent.putExtra(Intent.EXTRA_TEXT, shareText);
             startActivity(Intent.createChooser(shareIntent, "Share via"));
-        });
+        }));
 
         // ── Recommend to Community (Firebase Realtime Database)
-        btnRecommend.setOnClickListener(v -> recommendBook());
+        btnRecommend.setOnClickListener(v -> UiUtils.animateClick(v, this::recommendBook));
     }
 
     // ═══════════════════════════════════════════════════════════

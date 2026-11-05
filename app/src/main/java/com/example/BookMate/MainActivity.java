@@ -163,10 +163,10 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
 
 
         // ── FAB → SearchActivity (Week 8: Explicit Intent) ───
-        fabSearch.setOnClickListener(v -> {
+        fabSearch.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             Intent intent = new Intent(MainActivity.this, SearchActivity.class);
             startActivity(intent);
-        });
+        }));
 
         // ── Restore saved reminder switch state (SharedPreferences) ──
         // Done BEFORE attaching the listener so it doesn't re-trigger the alarm.
@@ -189,11 +189,11 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         });
 
         // ── Test Reminder button (Week 10: 10-second delay) ──
-        btnTestReminder.setOnClickListener(v -> {
+        btnTestReminder.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             if (ensureNotificationPermission(REQUEST_PERMISSION_TEST)) {
                 scheduleTestReminder();
             }
-        });
+        }));
 
         // ── Request notification permission on launch (Android 13+)
         ensureNotificationPermission(REQUEST_PERMISSION_LAUNCH);

@@ -52,14 +52,14 @@
                 android:contentDescription="Listen to Book (Text-to-Speech)"
                 app:tint="@android:color/white" />
 
-            <!-- Theme Switcher (Light / Sepia / Dark) -->
+            <!-- Theme Switcher (White / Dark / Sepia) -->
             <ImageButton
                 android:id="@+id/btnThemeToggle"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_marginStart="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_menu_view"
+                android:src="@drawable/ic_dark_mode"
                 android:contentDescription="Switch Reading Theme"
                 app:tint="@android:color/white" />
 
@@ -102,20 +102,23 @@
             style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Open in browser" />
+            android:text="Open in browser"
+            android:textSize="12sp" />
+
     </LinearLayout>
 
-    <!-- Reading Progress Bar -->
+    <!-- Reading Progress Bar (Thin line right below the toolbar) -->
     <ProgressBar
         android:id="@+id/progressBarReading"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="4dp"
-        android:max="100"
         android:progress="0"
-        android:progressTint="?attr/colorSecondary" />
+        android:max="100"
+        android:progressTint="?attr/colorSecondary"
+        android:progressBackgroundTint="#33000000" />
 
-    <!-- Content Area: Native Scrollable Text View or In-App WebView -->
+    <!-- Container holding either Native Text or In-App WebView -->
     <FrameLayout
         android:id="@+id/containerContent"
         android:layout_width="match_parent"
@@ -211,6 +214,8 @@
         android:gravity="center_vertical"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
         android:visibility="gone">
 
         <com.google.android.material.button.MaterialButton
@@ -246,46 +251,74 @@
         android:gravity="center_vertical"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
         android:background="#F5F5F5">
 
-        <!-- Font Decrease Button (A-) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnFontDecrease"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="48dp"
-            android:layout_height="38dp"
-            android:padding="0dp"
-            android:text="A-"
-            android:textSize="13sp" />
-
-        <!-- Font Size Indicator -->
-        <TextView
-            android:id="@+id/tvFontSize"
+        <!-- Interactive Font Size Stepper Capsule -->
+        <LinearLayout
+            android:id="@+id/layoutFontSizeCapsule"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:text="16sp"
-            android:textSize="13sp"
-            android:textColor="#333333" />
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_stepper_capsule"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp">
 
-        <!-- Font Increase Button (A+) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnFontIncrease"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="48dp"
-            android:layout_height="38dp"
-            android:padding="0dp"
-            android:text="A+"
-            android:textSize="13sp" />
+            <!-- Font Decrease Button (-) -->
+            <ImageButton
+                android:id="@+id/btnFontDecrease"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_text_decrease"
+                android:contentDescription="Decrease font size"
+                android:scaleType="centerInside" />
+
+            <!-- Font Size Indicator -->
+            <TextView
+                android:id="@+id/tvFontSize"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="48dp"
+                android:gravity="center"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:text="16 sp"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:textColor="#1E293B" />
+
+            <!-- Font Increase Button (+) -->
+            <ImageButton
+                android:id="@+id/btnFontIncrease"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_text_increase"
+                android:contentDescription="Increase font size"
+                android:scaleType="centerInside" />
+
+        </LinearLayout>
 
         <!-- Spacer -->
         <View
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1" />
+
+        <!-- Quick Dark/White Theme Toggle in Bottom Bar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnThemeQuickToggle"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:layout_marginEnd="8dp"
+            android:text="🌙 Dark"
+            android:textSize="12sp"
+            android:textColor="#334155"
+            app:cornerRadius="18dp" />
 
         <!-- Reading Progress Text Percentage -->
         <TextView
@@ -294,6 +327,7 @@
             android:layout_height="wrap_content"
             android:text="0% read"
             android:textSize="13sp"
+            android:textStyle="bold"
             android:textColor="#555555" />
 
     </LinearLayout>
