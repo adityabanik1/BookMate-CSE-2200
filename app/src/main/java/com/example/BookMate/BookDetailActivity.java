@@ -30,6 +30,9 @@ import java.util.Map;
  *          displays persisted reading progress.
  * Firebase: "Recommend" pushes the book to the Realtime Database
  *          (/recommendations) so it shows up in CommunityActivity.
+ * Multi-Provider:
+ * - Detects Project Gutenberg vs Open Library/Internet Archive source.
+ * - Displays source badges and tailored reading/borrowing actions.
  * ============================================================
  */
 public class BookDetailActivity extends AppCompatActivity {
@@ -117,6 +120,8 @@ public class BookDetailActivity extends AppCompatActivity {
     private void checkSavedStatus() {
         if (book == null || dbHelper == null) return;
         Book savedBook = dbHelper.isBookSaved(book.getTitle(), book.getAuthor());
+        boolean isGutenberg = book.getReadUrl() != null && book.getReadUrl().contains("gutenberg.org");
+
         if (savedBook != null) {
             // Book is already saved — update our local reference
             book.setId(savedBook.getId());
@@ -139,8 +144,11 @@ public class BookDetailActivity extends AppCompatActivity {
             // Show reading progress if started
             if (book.getLastReadPosition() > 0) {
                 tvDetailReadingProgress.setVisibility(View.VISIBLE);
-                tvDetailReadingProgress.setText("🔖 Reading in progress");
+                tvDetailReadingProgress.setText("🔖 " + book.getLastReadPosition() + "% read");
                 btnReadBook.setText("📖  Continue Reading");
+            } else if (isGutenberg) {
+                tvDetailReadingProgress.setVisibility(View.GONE);
+                btnReadBook.setText("📖  Read Full Book");
             } else {
                 tvDetailReadingProgress.setVisibility(View.GONE);
                 btnReadBook.setText("📖  Start Reading");
@@ -149,10 +157,23 @@ public class BookDetailActivity extends AppCompatActivity {
             // Show the Delete button
             btnDelete.setVisibility(View.VISIBLE);
         } else {
-            tvStatus.setVisibility(View.GONE);
             tvDetailReadingProgress.setVisibility(View.GONE);
             btnDelete.setVisibility(View.GONE);
-            btnReadBook.setText("📖  Start Reading");
+
+            if (isGutenberg) {
+                tvStatus.setText("📗 Free Full-Text Ebook");
+                BookAdapter.setBadgeColor(tvStatus, R.color.badge_gutenberg);
+                tvStatus.setVisibility(View.VISIBLE);
+                btnReadBook.setText("📖  Read Full Book");
+            } else if (book.getReadUrl() != null && (book.getReadUrl().contains("archive.org") || book.getReadUrl().contains("openlibrary.org"))) {
+                tvStatus.setText("🏛️ Open Library Catalog");
+                BookAdapter.setBadgeColor(tvStatus, R.color.badge_open_library);
+                tvStatus.setVisibility(View.VISIBLE);
+                btnReadBook.setText("📖  Start Reading");
+            } else {
+                tvStatus.setVisibility(View.GONE);
+                btnReadBook.setText("📖  Start Reading");
+            }
         }
         findViewById(R.id.btnBorrowOnline).setVisibility(
                 LoanTarget.fromUrl(book.getReadUrl()) != null ? View.VISIBLE : View.GONE);

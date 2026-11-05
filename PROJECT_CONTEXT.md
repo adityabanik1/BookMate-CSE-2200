@@ -326,3 +326,31 @@ The user subsequently approved proceeding with the proposed prototype. This supe
 - No evidence yet establishes whether protected scanned-page requests are cacheable or repeated on the user's phone. Do not promise that adding more cache capacity will fix first-time page loads, or that WebView caches every book image.
 - Proposed next work: inspect the active reader's actual page requests/cache behavior, then reduce avoidable reloads and assess provider-supported preloading of upcoming pages. Keep loan verification fresh and respect expiry/return. No custom protected-page cache, forced expired-resource caching, or full-book download was implemented in this assessment.
 - Android cache-mode reference: https://developer.android.com/reference/android/webkit/WebSettings#LOAD_DEFAULT
+
+### Supported preloading investigation — 2026-11-04
+
+- Re-read all project instructions and README. No applicable AGENTS.md was found in the repository or checked ancestor directories. Git working tree was clean at the start of this continuation; earlier “not committed” descriptions above are historical, not the current Git status.
+- Confirmed both WebViews still use LOAD_DEFAULT. No clearCache or reload call was found in app/src/main. ReaderActivity only calls its initial online load when WebView.getUrl() is null, so switching Text View -> Web View within the same activity does not itself reload the book. Activity recreation creates a new reader; neither activity preserves the live provider document. Do not replay borrow/return routes to restore it.
+- Current upstream BookReader source already provides nearby-page rendering: Mode1UpLit.computeRenderedPages includes one preceding/following page; Mode2UpLit includes two preceding/following pages. ImageCache tracks loaded images by page/reduction and reuses sufficient loaded resolutions through browser image requests. This is upstream behavior, not verification of the version/configuration deployed to the user's phone, durable offline storage, or successful protected-page preloading.
+- No general “preload N pages” option was found in the inspected upstream options.js. thumbRowBuffer controls thumbnails, not full reading pages. BookMate hosts provider pages rather than constructing its own BookReader instance; changing internal JavaScript methods would be a provider-version-dependent customization, not an established integration setting.
+- Actual phone cache headers, request timing, repeated transfers, deployed BookReader version, and authenticated page access remain unmeasured. ADB was found using the locally configured SDK, but `adb devices -l` failed because its daemon could not start/connect. No installation or account action occurred.
+- Recommended next diagnostic: inspect the active reader in a local debug session (enable WebView debugging only for a debug build if needed), keep DevTools “Disable cache” unchecked, compare first page -> next page -> previous page at unchanged zoom, then repeat after a short wait. Inspect the actual page-image requests, HTTP status, TTFB, download time, transferred bytes/cache source, Cache-Control/Expires/Vary, and whether next-page requests start before navigation. Do not export raw HARs, cookies, authorization headers, signed URLs, or response bodies to project files/chat.
+- Interpretation: slow first fetch but fast revisits suggests reuse works; fast next-page navigation after waiting suggests existing preloading works; repeated large transfers at unchanged resolution need cache-policy/request-identity investigation; slow document/scripts before images need startup investigation. Compare the same edition and zoom in the phone browser before selecting a change.
+- No application code, custom protected-page cache, forced stale-cache mode, new dependency, staging, commit, or push was added. Only this context entry changed; build/tests were not rerun for documentation-only research.
+
+Sources inspected:
+- https://raw.githubusercontent.com/internetarchive/bookreader/master/src/BookReader/Mode1UpLit.js
+- https://raw.githubusercontent.com/internetarchive/bookreader/master/src/BookReader/Mode2UpLit.js
+- https://raw.githubusercontent.com/internetarchive/bookreader/master/src/BookReader/ImageCache.js
+- https://raw.githubusercontent.com/internetarchive/bookreader/master/src/BookReader/options.js
+- https://developer.chrome.com/docs/devtools/remote-debugging/webviews/
+
+### Multi-Provider Search & Free Public Domain Books — 2026-11-06
+
+- Expanded book discovery beyond Internet Archive / Open Library by integrating **Project Gutenberg via the Gutendex REST API** (`https://gutendex.com/books/?search=`).
+- Gutendex is a public, free, keyless API providing direct metadata and UTF-8 plain-text reader downloads for over 70,000 public-domain books.
+- Added provider filtering in [`SearchActivity.java`](file:///c:/Users/ASUS/AndroidStudioProjects/BookMate/app/src/main/java/com/example/BookMate/SearchActivity.java) via a `MaterialButtonToggleGroup` (`All Providers`, `📗 Gutenberg (Full Text)`, `🏛️ Open Library`).
+- When "All Providers" is selected, searches run across both providers and intelligently merge results (prioritizing Gutenberg editions with guaranteed complete text and deduplicating by normalized title).
+- Distinct color-coded status and provider badges in [`BookAdapter.java`](file:///c:/Users/ASUS/AndroidStudioProjects/BookMate/app/src/main/java/com/example/BookMate/BookAdapter.java) (`badge_gutenberg`: #0D9488 Teal, `badge_open_library`: #6D28D9 Purple, `badge_featured`: #D97706 Amber).
+- [`BookDetailActivity.java`](file:///c:/Users/ASUS/AndroidStudioProjects/BookMate/app/src/main/java/com/example/BookMate/BookDetailActivity.java) identifies Gutenberg books and displays `"📗 Free Full-Text Ebook"` with a `"📖 Read Full Book"` action button that opens directly in BookMate's native reader.
+- Verification: offline unit tests (`testDebugUnitTest`) and APK packaging (`assembleDebug`) passed with 100% success.

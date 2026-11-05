@@ -19,12 +19,15 @@ import java.util.List;
  * ============================================================
  * Week 9: Custom Adapter with a reusable ViewHolder pattern.
  *         Used by both MainActivity (offline list) and
- *         SearchActivity (online search results).
+ *         SearchActivity (online search results across providers).
  *
  * The adapter supports a click listener interface so that
  * Activities can handle item clicks to open BookDetailActivity.
- * setUnsavedLabel() changes the badge shown on unsaved books
- * ("Featured" for featured classics, "Online Result" for search).
+ * Supports distinct color-coded badges for:
+ * - Saved Books ("Want to Read", "Finished")
+ * - Project Gutenberg ("📗 Free Ebook")
+ * - Open Library / Internet Archive ("🏛️ Open Library")
+ * - Curated offline classics ("✨ Featured")
  * ============================================================
  */
 public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder> {
@@ -53,7 +56,6 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
     @NonNull
     @Override
     public BookViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // Inflate the custom item layout (item_book.xml)
         View view = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_book, parent, false);
         return new BookViewHolder(view);
@@ -66,10 +68,16 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
         // Bind data to views
         holder.tvTitle.setText(book.getTitle());
         holder.tvAuthor.setText("by " + book.getAuthor());
-        holder.tvYear.setText("Published: " + book.getPublishYear());
 
-        // Set status badge text and color
-        // (colors come from res/values/colors.xml)
+        String yearText = book.getPublishYear();
+        String publisher = book.getPublisher();
+        if (publisher != null && !publisher.isEmpty() && !"N/A".equalsIgnoreCase(publisher)) {
+            holder.tvYear.setText(publisher + " • " + yearText);
+        } else {
+            holder.tvYear.setText("Published: " + yearText);
+        }
+
+        // Set status/source badge text and color
         String status = book.getStatus();
         if ("WANT_TO_READ".equals(status)) {
             holder.tvStatus.setText("Want to Read");
@@ -77,6 +85,15 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
         } else if ("FINISHED".equals(status)) {
             holder.tvStatus.setText("Finished");
             setBadgeColor(holder.tvStatus, R.color.badge_finished); // Green
+        } else if ("Featured".equalsIgnoreCase(unsavedLabel)) {
+            holder.tvStatus.setText("✨ Featured");
+            setBadgeColor(holder.tvStatus, R.color.badge_featured); // Amber
+        } else if (book.getReadUrl() != null && book.getReadUrl().contains("gutenberg.org")) {
+            holder.tvStatus.setText("📗 Free Ebook");
+            setBadgeColor(holder.tvStatus, R.color.badge_gutenberg); // Teal
+        } else if (book.getReadUrl() != null && (book.getReadUrl().contains("archive.org") || book.getReadUrl().contains("openlibrary.org"))) {
+            holder.tvStatus.setText("🏛️ Open Library");
+            setBadgeColor(holder.tvStatus, R.color.badge_open_library); // Purple
         } else {
             holder.tvStatus.setText(unsavedLabel);
             setBadgeColor(holder.tvStatus, R.color.badge_online); // Grey
@@ -108,8 +125,6 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
     }
 
     // ── Helper: Set badge background color programmatically ───
-    // public static so BookDetailActivity can reuse it.
-    // colorResId is a color resource, e.g. R.color.badge_finished
     public static void setBadgeColor(TextView badge, int colorResId) {
         GradientDrawable bg = (GradientDrawable) badge.getBackground().mutate();
         bg.setColor(ContextCompat.getColor(badge.getContext(), colorResId));

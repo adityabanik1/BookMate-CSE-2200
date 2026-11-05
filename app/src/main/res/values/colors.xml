@@ -13,6 +13,9 @@
     <color name="badge_want_to_read">#FF1976D2</color>
     <color name="badge_finished">#FF388E3C</color>
     <color name="badge_online">#FF757575</color>
+    <color name="badge_gutenberg">#FF0D9488</color>
+    <color name="badge_open_library">#FF6D28D9</color>
+    <color name="badge_featured">#FFD97706</color>
     <color name="card_background">#FFFFFFFF</color>
     <color name="divider_color">#FFE0E0E0</color>
 </resources>

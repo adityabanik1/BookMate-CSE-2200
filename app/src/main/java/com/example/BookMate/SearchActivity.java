@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,15 +33,16 @@ import java.util.concurrent.Executors;
 
 /**
  * ============================================================
- * SearchActivity.java — Online Book Search
+ * SearchActivity.java — Online Book Search Across Providers
  * ============================================================
  * Week 8 : Activity lifecycle, Explicit Intent to BookDetailActivity.
  * Week 9 : RecyclerView with BookAdapter for search results.
- * Week 11: Networking (Open Library API) on a background thread
- *          using ExecutorService + Handler.
- * Week 11: XML parsing — featured classics are read from
- *          assets/featured_books.xml (FeaturedBooksParser) and
- *          shown before the user searches.
+ * Week 11: Networking on a background thread using ExecutorService + Handler.
+ * Multi-Provider:
+ * - All Providers (Combines Gutenberg full text + Open Library catalog)
+ * - Project Gutenberg (70,000+ free public domain full-text classics)
+ * - Open Library / Internet Archive (Global catalog & digital borrowing)
+ * Week 11: XML parsing — featured classics from assets/featured_books.xml.
  * ============================================================
  */
 public class SearchActivity extends AppCompatActivity implements BookAdapter.OnBookClickListener {
@@ -49,14 +51,17 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
     private EditText etSearchQuery;
     private ImageButton btnClearQuery;
     private MaterialButton btnSearch;
+    private MaterialButtonToggleGroup toggleProvider;
+    private MaterialButton btnProviderAll, btnProviderGutenberg, btnProviderOpenLibrary;
     private ProgressBar progressBar;
     private RecyclerView recyclerSearchResults;
     private TextView tvSearchEmpty;
     private TextView tvSectionLabel;
 
-    // ── Data ──────────────────────────────────────────────────
+    // ── Data & Provider State ─────────────────────────────────
     private BookAdapter adapter;
     private List<Book> searchResults;
+    private String selectedProvider = NetworkUtils.PROVIDER_ALL;
 
     // ── Threading (Week 11) ───────────────────────────────────
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -78,10 +83,34 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         etSearchQuery = findViewById(R.id.etSearchQuery);
         btnClearQuery = findViewById(R.id.btnClearQuery);
         btnSearch = findViewById(R.id.btnSearch);
+        toggleProvider = findViewById(R.id.toggleProvider);
+        btnProviderAll = findViewById(R.id.btnProviderAll);
+        btnProviderGutenberg = findViewById(R.id.btnProviderGutenberg);
+        btnProviderOpenLibrary = findViewById(R.id.btnProviderOpenLibrary);
         progressBar = findViewById(R.id.progressBar);
         recyclerSearchResults = findViewById(R.id.recyclerSearchResults);
         tvSearchEmpty = findViewById(R.id.tvSearchEmpty);
         tvSectionLabel = findViewById(R.id.tvSectionLabel);
+
+        // ── Default provider selection ────────────────────────
+        btnProviderAll.setChecked(true);
+
+        toggleProvider.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (!isChecked) return;
+            group.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+            if (checkedId == R.id.btnProviderGutenberg) {
+                selectedProvider = NetworkUtils.PROVIDER_GUTENBERG;
+            } else if (checkedId == R.id.btnProviderOpenLibrary) {
+                selectedProvider = NetworkUtils.PROVIDER_OPEN_LIBRARY;
+            } else {
+                selectedProvider = NetworkUtils.PROVIDER_ALL;
+            }
+
+            String query = etSearchQuery.getText().toString().trim();
+            if (!query.isEmpty()) {
+                performSearch();
+            }
+        });
 
         // ── Setup RecyclerView with smooth animations ─────────
         searchResults = new ArrayList<>();
@@ -122,8 +151,6 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         });
 
         // ── Handle keyboard "Search" action ───────────────────
-        // A physical Enter key sends both ACTION_DOWN and ACTION_UP,
-        // so only react to ACTION_DOWN (event is null for the soft keyboard).
         etSearchQuery.setOnEditorActionListener((v, actionId, event) -> {
             if (event == null || event.getAction() == KeyEvent.ACTION_DOWN) {
                 performSearch();
@@ -134,7 +161,6 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
 
     @Override
     protected void onDestroy() {
-        // Stop the background thread so it doesn't outlive the Activity
         executor.shutdown();
         super.onDestroy();
     }
@@ -150,7 +176,6 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
     private void showFeaturedBooks() {
         List<Book> featured = FeaturedBooksParser.parse(this);
         if (featured.isEmpty()) {
-            // Nothing to show → keep the default "Search for books" hint
             tvSectionLabel.setVisibility(View.GONE);
             return;
         }
@@ -165,11 +190,11 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
     }
 
     // ═══════════════════════════════════════════════════════════
-    // Network Search — Week 11
+    // Network Search — Multi-Provider (Week 11)
     // ═══════════════════════════════════════════════════════════
 
     /**
-     * Launches a background thread to call the Open Library API,
+     * Launches a background thread to call book provider APIs,
      * then posts results back to the main thread to update the UI.
      */
     private void performSearch() {
@@ -179,34 +204,34 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
             return;
         }
 
-        // Dismiss keyboard smoothly so results are visible
         hideKeyboard();
 
-        // Show loading state
         progressBar.setVisibility(View.VISIBLE);
         tvSearchEmpty.setVisibility(View.GONE);
         recyclerSearchResults.setVisibility(View.GONE);
 
-        // Execute network request on background thread (Week 11)
-        executor.execute(() -> {
-            // This runs on a BACKGROUND thread — safe for network I/O
-            List<Book> results = NetworkUtils.searchBooks(query);
+        String activeProvider = selectedProvider;
 
-            // Post results back to the MAIN thread via Handler
+        executor.execute(() -> {
+            List<Book> results = NetworkUtils.searchBooks(query, activeProvider);
+
             mainHandler.post(() -> {
-                // The user may have left the screen while we were downloading
                 if (isFinishing() || isDestroyed()) return;
 
                 progressBar.setVisibility(View.GONE);
                 recyclerSearchResults.setVisibility(View.VISIBLE);
 
-                // From now on the list shows search results, not featured books
-                tvSectionLabel.setText("Results for \"" + query + "\"");
+                if (NetworkUtils.PROVIDER_GUTENBERG.equals(activeProvider)) {
+                    tvSectionLabel.setText("Project Gutenberg results for \"" + query + "\"");
+                } else if (NetworkUtils.PROVIDER_OPEN_LIBRARY.equals(activeProvider)) {
+                    tvSectionLabel.setText("Open Library results for \"" + query + "\"");
+                } else {
+                    tvSectionLabel.setText("Results for \"" + query + "\"");
+                }
                 tvSectionLabel.setVisibility(View.VISIBLE);
                 adapter.setUnsavedLabel("Online Result");
 
                 if (results == null) {
-                    // Request failed → most likely no internet
                     Toast.makeText(this, "Couldn't connect. Check your internet and try again.",
                             Toast.LENGTH_LONG).show();
                     tvSearchEmpty.setText("No internet connection.\nPlease check and try again.");
@@ -235,13 +260,11 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
 
     @Override
     public void onBookClick(Book book) {
-        // Open BookDetailActivity with the selected book data
         Intent intent = new Intent(SearchActivity.this, BookDetailActivity.class);
-        intent.putExtra("book", book); // Book implements Serializable
+        intent.putExtra("book", book);
         startActivity(intent);
     }
 
-    /** Smoothly dismisses the on-screen keyboard */
     private void hideKeyboard() {
         View view = this.getCurrentFocus();
         if (view != null) {

@@ -7,6 +7,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -15,6 +16,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class NetworkUtilsTest {
+
     @Test
     public void searchPrefersDesignatedLendingEditionOverFirstScan() throws Exception {
         java.lang.reflect.Method parser = NetworkUtils.class.getDeclaredMethod("parseJsonResponse", String.class);
@@ -91,5 +93,38 @@ public class NetworkUtilsTest {
             server.close();
             worker.shutdownNow();
         }
+    }
+
+    @Test
+    public void authorNameFormatsCorrectlyFromGutendex() {
+        assertEquals("Jane Austen", NetworkUtils.formatAuthorName("Austen, Jane"));
+        assertEquals("Arthur Conan Doyle", NetworkUtils.formatAuthorName("Doyle, Arthur Conan"));
+        assertEquals("Plato", NetworkUtils.formatAuthorName("Plato"));
+        assertEquals("Unknown Author", NetworkUtils.formatAuthorName(null));
+        assertEquals("Unknown Author", NetworkUtils.formatAuthorName("   "));
+    }
+
+    @Test
+    public void parseGutendexResponseConstructsProperBooks() {
+        String json = "{\"results\":[{"
+                + "\"id\":1342,"
+                + "\"title\":\"Pride and Prejudice\","
+                + "\"authors\":[{\"name\":\"Austen, Jane\",\"birth_year\":1775,\"death_year\":1817}]"
+                + "}]}";
+        List<Book> books = NetworkUtils.parseGutendexJsonResponse(json);
+        assertNotNull(books);
+        assertEquals(1, books.size());
+        Book book = books.get(0);
+        assertEquals("Pride and Prejudice", book.getTitle());
+        assertEquals("Jane Austen", book.getAuthor());
+        assertEquals("Project Gutenberg", book.getPublisher());
+        assertEquals("https://www.gutenberg.org/ebooks/1342.html.images", book.getReadUrl());
+    }
+
+    @Test
+    public void providerConstantsAreDefined() {
+        assertEquals("all", NetworkUtils.PROVIDER_ALL);
+        assertEquals("gutenberg", NetworkUtils.PROVIDER_GUTENBERG);
+        assertEquals("openlibrary", NetworkUtils.PROVIDER_OPEN_LIBRARY);
     }
 }

@@ -9,28 +9,38 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 /**
  * ============================================================
- * NetworkUtils.java — HTTP Networking + JSON Parser
+ * NetworkUtils.java — HTTP Networking + Multi-Provider Search
  * ============================================================
- * Week 11: Performs HTTP GET to the Open Library Search API
- *          and parses the JSON response using org.json.
+ * Supports multiple public, free, keyless book providers:
+ * 1. Project Gutenberg (via Gutendex REST API):
+ *    - Keyless: https://gutendex.com/books/?search={query}
+ *    - 70,000+ public-domain books with full-text reading and TTS.
+ * 2. Open Library Search API:
+ *    - Keyless: https://openlibrary.org/search.json?q={query}&limit=15
+ *    - Worldwide catalog metadata and digital library loan links.
+ * 3. Free Dictionary API:
+ *    - Keyless: https://api.dictionaryapi.dev/api/v2/entries/en/{word}
  *
- * API Endpoint : https://openlibrary.org/search.json?q={query}&limit=15
- * Dictionary   : https://api.dictionaryapi.dev/api/v2/entries/en/{word}
- *                (used by "Define" in the reader)
- * No API key required for either.
- *
- * Threading  : This class performs BLOCKING network I/O.
- *              Callers must invoke searchBooks() / getDefinition() on a
- *              background thread (via ExecutorService) — never on the main thread.
+ * Threading: This class performs BLOCKING network I/O.
+ * Callers must invoke searchBooks() / getDefinition() on a
+ * background thread (via ExecutorService) — never on the main thread.
  * ============================================================
  */
 public class NetworkUtils {
 
+    public static final String PROVIDER_ALL = "all";
+    public static final String PROVIDER_GUTENBERG = "gutenberg";
+    public static final String PROVIDER_OPEN_LIBRARY = "openlibrary";
+
     private static final String BASE_URL = "https://openlibrary.org/search.json";
+    private static final String GUTENDEX_BASE_URL = "https://gutendex.com/books/";
     private static final String DICTIONARY_URL = "https://api.dictionaryapi.dev/api/v2/entries/en/";
     private static final int MAX_BOOK_CHARS = 10000000;
 
@@ -38,10 +48,6 @@ public class NetworkUtils {
      * Looks up a word in the Free Dictionary API.
      * Returns e.g. "(noun) A large book...", or null if the word isn't
      * found or there is no internet. MUST be called from a background thread.
-     *
-     * JSON structure (we only read the FIRST meaning):
-     * [ { "meanings": [ { "partOfSpeech": "noun",
-     *                     "definitions": [ { "definition": "..." } ] } ] } ]
      */
     public static String getDefinition(String word) {
         try {
@@ -49,11 +55,10 @@ public class NetworkUtils {
             String json = downloadTextFromUrl(url, 500000); // common words have long answers
             if (json == null) return null; // e.g. HTTP 404 = word not in the dictionary
 
-            // One step per level of the JSON shown above
-            JSONArray entries = new JSONArray(json);                                  // [ ... ]
-            JSONObject entry = entries.getJSONObject(0);                              // first entry
-            JSONObject meaning = entry.getJSONArray("meanings").getJSONObject(0);     // first meaning
-            JSONObject first = meaning.getJSONArray("definitions").getJSONObject(0);  // first definition
+            JSONArray entries = new JSONArray(json);
+            JSONObject entry = entries.getJSONObject(0);
+            JSONObject meaning = entry.getJSONArray("meanings").getJSONObject(0);
+            JSONObject first = meaning.getJSONArray("definitions").getJSONObject(0);
             return "(" + meaning.getString("partOfSpeech") + ") " + first.getString("definition");
         } catch (Exception e) {
             e.printStackTrace();
@@ -62,73 +67,188 @@ public class NetworkUtils {
     }
 
     /**
-     * Searches the Open Library API for books matching the query.
-     * MUST be called from a background thread.
+     * Searches for books matching the query across the specified provider.
      *
-     * @param query The search term (title or author).
-     * @return A list of Book objects, or null if the request failed (e.g. no internet).
+     * @param query Search query term.
+     * @param provider PROVIDER_ALL, PROVIDER_GUTENBERG, or PROVIDER_OPEN_LIBRARY.
+     * @return List of matching books, or null if network error.
+     */
+    public static List<Book> searchBooks(String query, String provider) {
+        if (query == null || query.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+        if (PROVIDER_GUTENBERG.equalsIgnoreCase(provider)) {
+            return searchGutenberg(query);
+        } else if (PROVIDER_OPEN_LIBRARY.equalsIgnoreCase(provider)) {
+            return searchOpenLibrary(query);
+        }
+        return searchAllProviders(query);
+    }
+
+    /**
+     * Convenience search method — defaults to searching all providers.
      */
     public static List<Book> searchBooks(String query) {
-        List<Book> books = null; // stays null if anything goes wrong
+        return searchBooks(query, PROVIDER_ALL);
+    }
 
+    /**
+     * Searches Project Gutenberg via Gutendex JSON API.
+     * MUST be called from a background thread.
+     */
+    public static List<Book> searchGutenberg(String query) {
         try {
-            // Build the request URL with URL-encoded query and English language filter
-            String encodedQuery = URLEncoder.encode(query, "UTF-8");
-            String urlString = BASE_URL + "?q=" + encodedQuery + "&language=eng&limit=15"
-                    // Only ask for the fields we actually use → smaller, faster response
-                    + "&fields=key,title,author_name,first_publish_year,publisher,ia,lending_identifier,id_project_gutenberg,cover_i";
-            URL url = new URL(urlString);
+            String encodedQuery = URLEncoder.encode(query.trim(), "UTF-8");
+            String urlString = GUTENDEX_BASE_URL + "?search=" + encodedQuery + "&languages=en";
+            String json = fetchJsonFromUrl(urlString, 10000);
+            if (json != null) {
+                return parseGutendexJsonResponse(json);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 
-            // Open connection
-            HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+    /**
+     * Parses Gutendex JSON response into Book objects.
+     */
+    static List<Book> parseGutendexJsonResponse(String jsonString) {
+        List<Book> books = new ArrayList<>();
+        try {
+            JSONObject jsonObject = new JSONObject(jsonString);
+            if (!jsonObject.has("results")) return books;
+            JSONArray results = jsonObject.getJSONArray("results");
+            int count = Math.min(results.length(), 15);
+            for (int i = 0; i < count; i++) {
+                JSONObject item = results.getJSONObject(i);
+                String title = item.optString("title", "Untitled");
+
+                String author = "Unknown Author";
+                if (item.has("authors")) {
+                    JSONArray authors = item.getJSONArray("authors");
+                    if (authors.length() > 0) {
+                        JSONObject firstAuthor = authors.getJSONObject(0);
+                        author = formatAuthorName(firstAuthor.optString("name", "Unknown Author"));
+                    }
+                }
+
+                int id = item.optInt("id", -1);
+                String publishYear = "Public Domain";
+                String publisher = "Project Gutenberg";
+                String readUrl = id > 0 ? "https://www.gutenberg.org/ebooks/" + id + ".html.images" : null;
+
+                books.add(new Book(title, author, publishYear, publisher, readUrl));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return books;
+    }
+
+    /**
+     * Formats Gutendex author names from "Lastname, Firstname" to "Firstname Lastname".
+     */
+    public static String formatAuthorName(String raw) {
+        if (raw == null || raw.trim().isEmpty()) return "Unknown Author";
+        String trimmed = raw.trim();
+        if (trimmed.contains(",")) {
+            String[] parts = trimmed.split(",", 2);
+            return parts[1].trim() + " " + parts[0].trim();
+        }
+        return trimmed;
+    }
+
+    /**
+     * Searches Open Library API.
+     * MUST be called from a background thread.
+     */
+    public static List<Book> searchOpenLibrary(String query) {
+        try {
+            String encodedQuery = URLEncoder.encode(query.trim(), "UTF-8");
+            String urlString = BASE_URL + "?q=" + encodedQuery + "&language=eng&limit=15"
+                    + "&fields=key,title,author_name,first_publish_year,publisher,ia,lending_identifier,id_project_gutenberg,cover_i";
+            String json = fetchJsonFromUrl(urlString, 10000);
+            if (json != null) {
+                return parseJsonResponse(json);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    /**
+     * Searches both Gutenberg and Open Library, merging results seamlessly.
+     */
+    public static List<Book> searchAllProviders(String query) {
+        List<Book> gutenbergResults = searchGutenberg(query);
+        List<Book> openLibResults = searchOpenLibrary(query);
+
+        if (gutenbergResults == null && openLibResults == null) {
+            return null; // Both failed (likely no internet)
+        }
+
+        List<Book> combined = new ArrayList<>();
+        Set<String> seenTitles = new HashSet<>();
+
+        if (gutenbergResults != null) {
+            for (Book b : gutenbergResults) {
+                combined.add(b);
+                seenTitles.add(normalizeTitle(b.getTitle()));
+            }
+        }
+
+        if (openLibResults != null) {
+            for (Book b : openLibResults) {
+                String norm = normalizeTitle(b.getTitle());
+                if (!seenTitles.contains(norm)) {
+                    combined.add(b);
+                    seenTitles.add(norm);
+                }
+            }
+        }
+
+        return combined;
+    }
+
+    private static String normalizeTitle(String title) {
+        if (title == null) return "";
+        return title.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+    }
+
+    private static String fetchJsonFromUrl(String urlString, int timeoutMs) {
+        HttpURLConnection connection = null;
+        try {
+            URL url = new URL(urlString);
+            connection = (HttpURLConnection) url.openConnection();
             connection.setRequestMethod("GET");
-            connection.setConnectTimeout(10000); // 10 seconds
-            connection.setReadTimeout(10000);
+            connection.setConnectTimeout(timeoutMs);
+            connection.setReadTimeout(timeoutMs);
+            connection.setRequestProperty("User-Agent", "BookMateApp/1.0 (Android)");
 
             int responseCode = connection.getResponseCode();
-
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                // Read the response body
                 BufferedReader reader = new BufferedReader(
-                        new InputStreamReader(connection.getInputStream()));
+                        new InputStreamReader(connection.getInputStream(), "UTF-8"));
                 StringBuilder response = new StringBuilder();
                 String line;
                 while ((line = reader.readLine()) != null) {
                     response.append(line);
                 }
                 reader.close();
-
-                // Parse JSON response
-                books = parseJsonResponse(response.toString());
+                return response.toString();
             }
-
-            connection.disconnect();
-
         } catch (Exception e) {
-            e.printStackTrace();
-            books = null; // network error
+            // Network failure or timeout
+        } finally {
+            if (connection != null) connection.disconnect();
         }
-
-        return books;
+        return null;
     }
 
     /**
      * Parses the Open Library JSON response into a list of Book objects.
-     *
-     * JSON structure:
-     * {
-     *   "docs": [
-     *     {
-     *       "title": "...",
-     *       "author_name": ["Author1", "Author2"],
-     *       "first_publish_year": 2001,
-     *       "publisher": ["Publisher1"],
-     *       "ia": ["identifier"],
-     *       "key": "/works/OL..."
-     *     },
-     *     ...
-     *   ]
-     * }
      */
     private static List<Book> parseJsonResponse(String jsonString) {
         List<Book> books = new ArrayList<>();
@@ -140,10 +260,8 @@ public class NetworkUtils {
             for (int i = 0; i < docsArray.length(); i++) {
                 JSONObject bookJson = docsArray.getJSONObject(i);
 
-                // Extract title (required field)
                 String title = bookJson.optString("title", "Untitled");
 
-                // Extract first author from author_name array
                 String author = "Unknown Author";
                 if (bookJson.has("author_name")) {
                     JSONArray authors = bookJson.getJSONArray("author_name");
@@ -152,13 +270,11 @@ public class NetworkUtils {
                     }
                 }
 
-                // Extract first publish year
                 String publishYear = "N/A";
                 if (bookJson.has("first_publish_year")) {
                     publishYear = String.valueOf(bookJson.getInt("first_publish_year"));
                 }
 
-                // Extract first publisher from publisher array
                 String publisher = "N/A";
                 if (bookJson.has("publisher")) {
                     JSONArray publishers = bookJson.getJSONArray("publisher");
@@ -167,7 +283,6 @@ public class NetworkUtils {
                     }
                 }
 
-                // Check for Project Gutenberg direct ID
                 String gutenbergId = null;
                 if (bookJson.has("id_project_gutenberg")) {
                     JSONArray pgArray = bookJson.getJSONArray("id_project_gutenberg");
@@ -176,7 +291,6 @@ public class NetworkUtils {
                     }
                 }
 
-                // Extract Internet Archive identifier (preferring English scans)
                 String iaId = null;
                 if (bookJson.has("ia")) {
                     JSONArray iaArray = bookJson.getJSONArray("ia");
@@ -195,22 +309,17 @@ public class NetworkUtils {
                     }
                 }
 
-                // Choose the best mobile-friendly reading URL
-                // Prefer the provider's designated lending edition over an arbitrary scan.
                 String lendingId = bookJson.optString("lending_identifier", "");
                 if (lendingId.matches("[A-Za-z0-9][A-Za-z0-9._-]{0,199}")) iaId = lendingId;
                 String readUrl = null;
                 if (gutenbergId != null && !gutenbergId.isEmpty()) {
-                    // Project Gutenberg clean mobile HTML view
                     readUrl = "https://www.gutenberg.org/ebooks/" + gutenbergId + ".html.images";
                 } else if (iaId != null && !iaId.isEmpty()) {
-                    // The full page shows access restrictions and borrowing controls.
                     readUrl = "https://archive.org/details/" + iaId;
                 } else if (bookJson.has("key")) {
                     readUrl = "https://openlibrary.org" + bookJson.getString("key");
                 }
 
-                // Create Book object with readUrl (online result)
                 books.add(new Book(title, author, publishYear, publisher, readUrl));
             }
 
@@ -223,12 +332,6 @@ public class NetworkUtils {
 
     /**
      * Attempts to fetch full public domain text for a book.
-     * Strategy:
-     * 1. Direct Project Gutenberg link if in readUrl.
-     * 2. Gutendex API search for free public domain text.
-     * 3. Internet Archive OCR text if ia identifier exists.
-     *
-     * MUST be called from a background thread.
      */
     public static String fetchPublicDomainText(String title, String author, String readUrl) {
         if (title == null || title.trim().isEmpty()) {
@@ -310,8 +413,7 @@ public class NetworkUtils {
     }
 
     /**
-     * Downloads a complete text response. Oversized responses fail rather than
-     * silently returning the beginning of a book as though it were complete.
+     * Downloads a complete text response.
      */
     public static String downloadTextFromUrl(String urlString, int maxChars) {
         int redirects = 0;
@@ -328,7 +430,6 @@ public class NetworkUtils {
 
                 int responseCode = connection.getResponseCode();
 
-                // Handle HTTP redirects (301, 302, 303, 307, 308)
                 if (responseCode == HttpURLConnection.HTTP_MOVED_PERM
                         || responseCode == HttpURLConnection.HTTP_MOVED_TEMP
                         || responseCode == HttpURLConnection.HTTP_SEE_OTHER
@@ -345,7 +446,7 @@ public class NetworkUtils {
 
                 if (responseCode == HttpURLConnection.HTTP_OK) {
                     String contentType = connection.getContentType();
-                    if (contentType != null && contentType.toLowerCase(java.util.Locale.ROOT)
+                    if (contentType != null && contentType.toLowerCase(Locale.ROOT)
                             .contains("text/html")) return null;
                     BufferedReader reader = new BufferedReader(
                             new InputStreamReader(connection.getInputStream(), "UTF-8"));
@@ -382,7 +483,6 @@ public class NetworkUtils {
         if (rawText == null) return null;
         String text = rawText.replace("\r\n", "\n").replace('\r', '\n');
 
-        // Skip Gutenberg headers
         int startIndex = text.indexOf("*** START OF THE PROJECT GUTENBERG");
         if (startIndex == -1) {
             startIndex = text.indexOf("*** START OF THIS PROJECT GUTENBERG");
@@ -394,7 +494,6 @@ public class NetworkUtils {
             }
         }
 
-        // Strip Gutenberg footer
         int endIndex = text.indexOf("*** END OF THE PROJECT GUTENBERG");
         if (endIndex == -1) {
             endIndex = text.indexOf("*** END OF THIS PROJECT GUTENBERG");
