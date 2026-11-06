@@ -11,6 +11,7 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="@color/brand_primary"
+        app:elevation="4dp"
         app:title="@string/loan_title"
         app:titleTextColor="@color/white"
         app:subtitleTextColor="@color/white"

@@ -403,3 +403,15 @@ Sources inspected:
 - **Verification:**
   - 31/31 unit tests passed (`testDebugUnitTest`).
   - Debug APK assembly verified with `assembleDebug`.
+
+### Duplicate Header Elimination & Layout Polish — 2026-11-06
+
+- **Eliminated Duplicate "Bookmate" Action Bar (`NoActionBar`):**
+  - Resolved stacked duplicate headers across all screens caused by `Theme.BookMate` extending `Theme.MaterialComponents.Light.DarkActionBar`.
+  - Migrated `Theme.BookMate` to `Theme.MaterialComponents.Light.NoActionBar` in both `res/values/themes.xml` and `res/values-night/themes.xml`.
+  - Each activity's dedicated `MaterialToolbar` is now the single, unified top app bar, reclaiming 56dp of vertical space for a modern, edge-to-edge feel.
+- **Brand Squircle Badge & App Bar Elevation:**
+  - Wrapped `MainActivity`'s logo in a `MaterialCardView` with `8dp` corner radius and `2dp` padding, removing the harsh square card look.
+  - Added consistent `app:elevation="4dp"` across all activity toolbars (`MainActivity`, `SearchActivity`, `BookDetailActivity`, `QuotesActivity`, `CommunityActivity`, `BorrowActivity`).
+- **Filter Button Label Polish:**
+  - Rebalanced `MaterialButtonToggleGroup` button weights (0.85 / 1.3 / 1.0) and reduced horizontal insets with 12sp font in `activity_main.xml` to prevent "Want to Read" from truncating to "Want to R...".

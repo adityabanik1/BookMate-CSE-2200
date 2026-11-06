@@ -16,6 +16,7 @@
         android:layout_width="match_parent"
         android:layout_height="?attr/actionBarSize"
         android:background="?attr/colorPrimary"
+        app:elevation="4dp"
         android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar"
         app:popupTheme="@style/ThemeOverlay.BookMate.PopupMenu">
 
@@ -25,12 +26,24 @@
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <ImageView
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="32dp"
                 android:layout_height="32dp"
                 android:layout_marginEnd="10dp"
-                android:src="@drawable/bookmate_logo"
-                android:contentDescription="Bookmate Logo" />
+                app:cardCornerRadius="8dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="@android:color/white">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="2dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/bookmate_logo"
+                    android:contentDescription="Bookmate Logo" />
+
+            </com.google.android.material.card.MaterialCardView>
 
             <TextView
                 android:layout_width="wrap_content"
@@ -74,30 +87,42 @@
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_weight="0.85"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
             android:text="All"
             android:textAllCaps="false"
-            android:textSize="13sp" />
+            android:textSize="12sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnFilterWantToRead"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_weight="1.3"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
             android:text="Want to Read"
             android:textAllCaps="false"
-            android:textSize="13sp" />
+            android:textSize="12sp" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnFilterFinished"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
+            android:layout_weight="1.0"
+            android:insetLeft="0dp"
+            android:insetRight="0dp"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
             android:text="Finished"
             android:textAllCaps="false"
-            android:textSize="13sp" />
+            android:textSize="12sp" />
 
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
