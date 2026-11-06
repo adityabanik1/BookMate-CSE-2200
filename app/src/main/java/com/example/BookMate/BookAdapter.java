@@ -86,10 +86,10 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
             holder.tvStatus.setText("Finished");
             setBadgeColor(holder.tvStatus, R.color.badge_finished); // Green
         } else if ("Featured".equalsIgnoreCase(unsavedLabel)) {
-            holder.tvStatus.setText("✨ Featured");
+            holder.tvStatus.setText("Featured");
             setBadgeColor(holder.tvStatus, R.color.badge_featured); // Amber
         } else if (book.getReadUrl() != null && book.getReadUrl().contains("gutenberg.org")) {
-            holder.tvStatus.setText("📗 Free Ebook");
+            holder.tvStatus.setText("Gutenberg Ebook");
             setBadgeColor(holder.tvStatus, R.color.badge_gutenberg); // Teal
         } else if (book.getReadUrl() != null && (book.getReadUrl().contains("archive.org") || book.getReadUrl().contains("openlibrary.org"))) {
             holder.tvStatus.setText("🏛️ Open Library");

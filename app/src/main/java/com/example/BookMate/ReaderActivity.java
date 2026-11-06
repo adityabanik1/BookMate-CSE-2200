@@ -264,7 +264,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
                 //    and reaching the end doesn't mark the book Finished.
                 String assetContent = getBookTextFromAssets(book.getTitle());
                 if (assetContent != null) {
-                    displayBookContent("📴 Offline preview — first chapter only\n\n"
+                    displayBookContent("Offline preview — first chapter only\n\n"
                             + assetContent, true);
                 } else {
                     String fallback = buildLibraryEditionMessage();
@@ -416,14 +416,14 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
 
     private String buildLibraryEditionMessage() {
         StringBuilder sb = new StringBuilder();
-        sb.append("📖 Online Library / Modern Edition\n\n");
+        sb.append("Online Library / Modern Edition\n\n");
         sb.append("\"").append(book.getTitle()).append("\"");
         if (book.getAuthor() != null && !book.getAuthor().isEmpty()) {
             sb.append(" by ").append(book.getAuthor());
         }
         sb.append(" could not be loaded as full text. This may be a connection issue, an unavailable text edition, or an access restriction.\n\n");
         if (book.getReadUrl() != null && !book.getReadUrl().isEmpty()) {
-            sb.append("👉 Tap 'Web View' in the top-right toolbar to read or preview this book online!\n\n");
+            sb.append("Tap 'Web View' in the top-right toolbar to read or preview this book online!\n\n");
         }
         return sb.toString();
     }
@@ -533,12 +533,13 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
                 btnThemeToggle.setImageResource(R.drawable.ic_light_mode);
                 btnThemeToggle.setContentDescription("Switch to White Theme");
                 if (btnThemeQuickToggle != null) {
-                    btnThemeQuickToggle.setText("☀️ White");
+                    btnThemeQuickToggle.setText("Light Mode");
+                    btnThemeQuickToggle.setIconResource(R.drawable.ic_light_mode);
                     btnThemeQuickToggle.setTextColor(Color.parseColor("#F8FAFC"));
                 }
                 if (toolbar != null) toolbar.setBackgroundColor(Color.parseColor("#181818"));
                 getWindow().setStatusBarColor(Color.parseColor("#121212"));
-                if (showToast) Toast.makeText(this, "🌙 Dark Theme", Toast.LENGTH_SHORT).show();
+                if (showToast) Toast.makeText(this, "Dark Theme", Toast.LENGTH_SHORT).show();
                 break;
 
             case THEME_SEPIA:
@@ -551,12 +552,13 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
                 btnThemeToggle.setImageResource(R.drawable.ic_dark_mode);
                 btnThemeToggle.setContentDescription("Switch Reading Theme");
                 if (btnThemeQuickToggle != null) {
-                    btnThemeQuickToggle.setText("☀️ White");
+                    btnThemeQuickToggle.setText("Light Mode");
+                    btnThemeQuickToggle.setIconResource(R.drawable.ic_light_mode);
                     btnThemeQuickToggle.setTextColor(Color.parseColor("#433422"));
                 }
                 if (toolbar != null) toolbar.setBackgroundColor(Color.parseColor("#4E342E"));
                 getWindow().setStatusBarColor(Color.parseColor("#3E2723"));
-                if (showToast) Toast.makeText(this, "📜 Sepia Theme", Toast.LENGTH_SHORT).show();
+                if (showToast) Toast.makeText(this, "Sepia Theme", Toast.LENGTH_SHORT).show();
                 break;
 
             case THEME_LIGHT:
@@ -570,12 +572,13 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
                 btnThemeToggle.setImageResource(R.drawable.ic_dark_mode);
                 btnThemeToggle.setContentDescription("Switch to Dark Theme");
                 if (btnThemeQuickToggle != null) {
-                    btnThemeQuickToggle.setText("🌙 Dark");
+                    btnThemeQuickToggle.setText("Dark Mode");
+                    btnThemeQuickToggle.setIconResource(R.drawable.ic_dark_mode);
                     btnThemeQuickToggle.setTextColor(Color.parseColor("#334155"));
                 }
                 if (toolbar != null) toolbar.setBackgroundColor(ContextCompat.getColor(this, R.color.brand_primary));
                 getWindow().setStatusBarColor(ContextCompat.getColor(this, R.color.brand_primary_dark));
-                if (showToast) Toast.makeText(this, "☀️ White Theme", Toast.LENGTH_SHORT).show();
+                if (showToast) Toast.makeText(this, "Light Theme", Toast.LENGTH_SHORT).show();
                 break;
         }
 
@@ -636,7 +639,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
                         && !"FINISHED".equals(book.getStatus()) && book.getId() > 0) {
                     book.setStatus("FINISHED");
                     dbHelper.updateBookStatus(book.getId(), "FINISHED");
-                    Toast.makeText(this, "🎉 Book Completed! Marked as Finished.", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "Book Completed! Marked as Finished.", Toast.LENGTH_SHORT).show();
                 }
             }
         }
@@ -744,7 +747,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
             runOnUiThread(() -> {
                 if (isFinishing() || isDestroyed()) return; // reader was closed meanwhile
                 new AlertDialog.Builder(this)
-                        .setTitle("📖 " + word)
+                        .setTitle("Definition: " + word)
                         .setMessage(meaning != null ? meaning
                                 : "No definition found (or no internet connection).")
                         .setPositiveButton("OK", null)
@@ -764,7 +767,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         etFind.setText(lastSearch); // keep the last word, so "Find next" continues
 
         new AlertDialog.Builder(this)
-                .setTitle("🔍 Find in book")
+                .setTitle("Find in Book")
                 .setView(view)
                 .setPositiveButton("Find next", (dialog, which) ->
                         findNext(etFind.getText().toString().trim()))
@@ -1022,7 +1025,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         }
 
         new AlertDialog.Builder(this)
-                .setTitle("📑 Book Chapters")
+                .setTitle("Book Chapters")
                 .setSingleChoiceItems(chapterTitles, selectedIdx, (dialog, which) -> {
                     dialog.dismiss();
                     BookTextPages.Chapter selected = chs.get(which);

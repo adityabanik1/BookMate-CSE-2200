@@ -162,7 +162,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:layout_marginBottom="12dp"
-                android:text="📖  Read Book"
+                android:text="Read Book"
+                app:icon="@drawable/ic_menu_book"
+                app:iconGravity="textStart"
+                app:iconTint="@android:color/white"
                 android:textSize="16sp"
                 app:cornerRadius="12dp"
                 app:elevation="2dp" />
@@ -184,8 +187,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:layout_marginBottom="8dp"
-                android:text="📌  Save as Want to Read"
-                android:textSize="15sp"
+                android:text="Save to Reading List"
+                app:icon="@drawable/ic_bookmark"
+                app:iconGravity="textStart"
+                app:iconTint="?attr/colorPrimary"
+                android:textSize="14sp"
                 app:cornerRadius="10dp" />
 
             <com.google.android.material.button.MaterialButton
@@ -194,8 +200,11 @@
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:layout_marginBottom="8dp"
-                android:text="✅  Mark as Finished"
-                android:textSize="15sp"
+                android:text="Mark as Finished"
+                app:icon="@drawable/ic_check_circle"
+                app:iconGravity="textStart"
+                app:iconTint="@color/badge_finished"
+                android:textSize="14sp"
                 app:cornerRadius="10dp" />
 
             <com.google.android.material.button.MaterialButton
@@ -204,9 +213,12 @@
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:layout_marginBottom="8dp"
-                android:text="🗑  Delete from List"
+                android:text="Delete from Library"
+                app:icon="@drawable/ic_delete"
+                app:iconGravity="textStart"
+                app:iconTint="#FFD32F2F"
                 android:textColor="#FFD32F2F"
-                android:textSize="15sp"
+                android:textSize="14sp"
                 android:visibility="gone"
                 app:cornerRadius="10dp" />
 
@@ -222,8 +234,11 @@
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:text="📤  Share Recommendation"
-                android:textSize="15sp"
+                android:text="Share Recommendation"
+                app:icon="@drawable/ic_share"
+                app:iconGravity="textStart"
+                app:iconTint="?attr/colorPrimary"
+                android:textSize="14sp"
                 app:cornerRadius="10dp" />
 
             <!-- Realtime Database: recommend this book to the community -->
@@ -232,8 +247,12 @@
                 style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:text="🌍  Recommend to Community"
-                android:textSize="15sp"
+                android:text="Recommend to Community"
+                app:icon="@drawable/ic_public"
+                app:iconGravity="textStart"
+                app:iconTint="@color/brand_accent_dark"
+                android:textColor="@color/brand_accent_dark"
+                android:textSize="14sp"
                 app:cornerRadius="10dp" />
 
         </LinearLayout>

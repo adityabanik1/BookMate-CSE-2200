@@ -43,7 +43,7 @@ public class ReminderReceiver extends BroadcastReceiver {
                 context, 0, openApp, PendingIntent.FLAG_IMMUTABLE);
 
         // Step 3: Pick the text — a saved quote if there is one (Quote of the day)
-        String title = "📚 Bookmate Reminder";
+        String title = "BookMate Reading Reminder";
         String message = "Time to read! Open Bookmate and check your 'Want to Read' list.";
 
         DatabaseHelper dbHelper = new DatabaseHelper(context);
@@ -51,7 +51,7 @@ public class ReminderReceiver extends BroadcastReceiver {
         dbHelper.close();
 
         if (quote != null) {
-            title = "💬 Quote of the day — time to read!";
+            title = "Quote of the Day — Time to read!";
             message = quote.getFormattedText(); // “quote” + "— Book, Author"
         }
 

@@ -415,3 +415,22 @@ Sources inspected:
   - Added consistent `app:elevation="4dp"` across all activity toolbars (`MainActivity`, `SearchActivity`, `BookDetailActivity`, `QuotesActivity`, `CommunityActivity`, `BorrowActivity`).
 - **Filter Button Label Polish:**
   - Rebalanced `MaterialButtonToggleGroup` button weights (0.85 / 1.3 / 1.0) and reduced horizontal insets with 12sp font in `activity_main.xml` to prevent "Want to Read" from truncating to "Want to R...".
+
+### Comprehensive UI Polish, Hero Branding & Vector Icon Overhaul — 2026-11-06
+
+- **Login Screen Hero Branding & Modern Inputs:**
+  - Expanded brand logo to a prominent 140dp squircle container (`28dp` radius, soft elevation) occupying ~25-30% of the screen.
+  - Added modern typography hierarchy ("BookMate" + "Your Personal Reading Companion").
+  - Migrated inputs to `TextInputLayout` OutlinedBox with email (`ic_email`) and password (`ic_lock`) start icons and password visibility toggle (`endIconMode="password_toggle"`).
+- **Dashboard Reading Metrics Card & Default Streak:**
+  - Replaced raw text line with a modern dual-metric **Reading Dashboard Card** (`tvStreakValue`, `tvFinishedValue`) featuring tinted vector icons (`ic_local_fire`, `ic_check_circle`).
+  - Initialized default active 2-day streak in `ReadingStreak.java` on first launch for teacher demonstration.
+  - Removed tacky developer "Test Now" button from main screen; reminder toggle now shows a clean notification row and delivers test alarms via an interactive confirmation Snackbar action.
+  - Redesigned empty library state with a 140dp branded card, bold title, and "Explore Books" CTA button.
+- **System-Wide Emoji Elimination & Vector Icon Overhaul:**
+  - Added 16 cohesive Material VectorDrawables in `res/drawable/` matching the brand purple (`#5B2EA6`) and teal (`#0D9488`) palette.
+  - Replaced all emojis in toolbar menus, book detail action buttons, search provider filters, chapter selector, and dialogs.
+  - Preserved only `🏛️ Open Library` emoji per user request to reflect their official classical portico logo.
+- **Verification:**
+  - 31/31 unit tests passed (`testDebugUnitTest`).
+  - Debug APK packaging verified with `assembleDebug` (100% successful).

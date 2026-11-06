@@ -54,7 +54,7 @@ public class QuoteDialog {
         }
 
         new AlertDialog.Builder(activity)
-                .setTitle(bookKnown ? "💬 Save quote" : "💬 Add quote or note")
+                .setTitle(bookKnown ? "Save Quote" : "Add Quote or Note")
                 .setView(view)
                 .setPositiveButton("Save", (dialog, which) -> {
                     String quoteText = etText.getText().toString().trim();
@@ -74,7 +74,7 @@ public class QuoteDialog {
                     dbHelper.close();
                     activity.getWindow().getDecorView().performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
 
-                    Toast.makeText(activity, "Quote saved 💬", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(activity, "Quote saved", Toast.LENGTH_SHORT).show();
                     if (onSaved != null) onSaved.run();
                 })
                 .setNegativeButton("Cancel", null)

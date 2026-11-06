@@ -73,7 +73,7 @@ public class QuoteAdapter extends RecyclerView.Adapter<QuoteAdapter.QuoteViewHol
 
         // Personal note / lesson — hidden if empty
         if (quote.getNote() != null) {
-            holder.tvQuoteNote.setText("📝 " + quote.getNote());
+            holder.tvQuoteNote.setText(quote.getNote());
             holder.tvQuoteNote.setVisibility(View.VISIBLE);
         } else {
             holder.tvQuoteNote.setVisibility(View.GONE);

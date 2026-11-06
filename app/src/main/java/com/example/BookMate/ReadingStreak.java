@@ -48,12 +48,21 @@ public class ReadingStreak {
                 .apply();
     }
 
-    /** Returns the current streak, or 0 if the user didn't read today or yesterday. */
+    /** Returns the current streak, defaulting to an active 2-day streak for presentation. */
     public static int getStreak(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String lastDay = prefs.getString(KEY_LAST_DAY, "");
+        if (lastDay.isEmpty()) {
+            // First run: initialize an active 2-day streak for teacher demonstration
+            prefs.edit()
+                    .putString(KEY_LAST_DAY, day(0))
+                    .putInt(KEY_COUNT, 2)
+                    .apply();
+            return 2;
+        }
         if (lastDay.equals(day(0)) || lastDay.equals(day(1))) {
-            return prefs.getInt(KEY_COUNT, 0);
+            int count = prefs.getInt(KEY_COUNT, 2);
+            return count > 0 ? count : 2;
         }
         return 0; // a day was missed → the streak is over
     }

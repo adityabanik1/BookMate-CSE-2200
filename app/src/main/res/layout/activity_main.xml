@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Week 8 & 9: MainActivity layout — Offline reading list with filter tabs -->
+<!-- Week 8 & 9: MainActivity layout — Professional Reading Dashboard & Filtered Library -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
@@ -57,18 +57,131 @@
 
     </com.google.android.material.appbar.MaterialToolbar>
 
-    <!-- Reading streak & stats: "🔥 3-day streak · 2 books finished" -->
-    <TextView
-        android:id="@+id/tvStats"
+    <!-- Reading Metrics Dashboard Card -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardDashboardStats"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:paddingStart="16dp"
-        android:paddingEnd="16dp"
-        android:paddingTop="10dp"
-        android:text="🔥 0-day streak · 0 books finished"
-        android:textColor="@color/brand_primary"
-        android:textSize="14sp"
-        android:textStyle="bold" />
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="14dp"
+        android:layout_marginTop="10dp"
+        android:layout_marginBottom="4dp"
+        app:cardCornerRadius="14dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="1dp"
+        app:strokeColor="#E2E8F0"
+        app:cardBackgroundColor="#F8FAFC">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="10dp">
+
+            <!-- Streak Counter Metric -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
+                    android:layout_marginEnd="10dp"
+                    android:src="@drawable/ic_local_fire"
+                    app:tint="@color/brand_primary"
+                    android:contentDescription="Streak" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvStreakValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="2 Days"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="#1A202C" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Daily Streak"
+                        android:textSize="11sp"
+                        android:textColor="#64748B" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Subtle Divider -->
+            <View
+                android:layout_width="1dp"
+                android:layout_height="28dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="16dp"
+                android:background="#E2E8F0" />
+
+            <!-- Finished Books Metric -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginEnd="10dp"
+                    android:src="@drawable/ic_check_circle"
+                    app:tint="@color/brand_accent_dark"
+                    android:contentDescription="Finished Books" />
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvFinishedValue"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="0 Books"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:textColor="#1A202C" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Completed"
+                        android:textSize="11sp"
+                        android:textColor="#64748B" />
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Hidden compatibility textview for existing references -->
+    <TextView
+        android:id="@+id/tvStats"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
 
     <!-- Filter Tabs Toggle Group with smooth transitions -->
     <com.google.android.material.button.MaterialButtonToggleGroup
@@ -126,32 +239,47 @@
 
     </com.google.android.material.button.MaterialButtonToggleGroup>
 
-    <!-- Reminder toggle row -->
+    <!-- Daily Reminder row (clean, no test button) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:paddingStart="16dp"
-        android:paddingEnd="8dp"
-        android:paddingBottom="4dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="8dp"
         android:gravity="center_vertical">
 
-        <TextView
+        <ImageView
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:layout_marginEnd="12dp"
+            android:src="@drawable/ic_notifications"
+            app:tint="@color/brand_primary"
+            android:contentDescription="Daily Reminder" />
+
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Daily Reading Reminder"
-            android:textSize="14sp"
-            android:textColor="@android:color/black" />
+            android:orientation="vertical">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnTestReminder"
-            style="@style/Widget.MaterialComponents.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Test Now"
-            android:textAllCaps="false"
-            android:textSize="12sp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Daily Reading Reminder"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#1A202C" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="9:00 AM notification with an inspiring quote"
+                android:textSize="12sp"
+                android:textColor="#64748B" />
+
+        </LinearLayout>
 
         <com.google.android.material.switchmaterial.SwitchMaterial
             android:id="@+id/switchReminder"
@@ -183,28 +311,63 @@
         <!-- Empty state layout shown when no books saved -->
         <LinearLayout
             android:id="@+id/layoutEmptyState"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
             android:gravity="center"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:padding="32dp">
 
-            <ImageView
-                android:layout_width="120dp"
-                android:layout_height="120dp"
-                android:layout_marginBottom="16dp"
-                android:src="@drawable/bookmate_logo"
-                android:contentDescription="Bookmate Logo" />
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="140dp"
+                android:layout_height="140dp"
+                android:layout_marginBottom="20dp"
+                app:cardCornerRadius="28dp"
+                app:cardElevation="2dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#E2E8F0"
+                app:cardBackgroundColor="@android:color/white">
+
+                <ImageView
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:padding="16dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/bookmate_logo"
+                    android:contentDescription="Bookmate Logo" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:id="@+id/tvEmptyTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="6dp"
+                android:text="Your Library is Empty"
+                android:textColor="#1A202C"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvEmptyState"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="No books yet.\nTap + to search and add books!"
+                android:layout_marginBottom="20dp"
+                android:text="Explore public-domain classics or search for books to start your reading journey."
                 android:textAlignment="center"
-                android:textColor="@android:color/darker_gray"
-                android:textSize="16sp" />
+                android:textColor="#64748B"
+                android:textSize="14sp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEmptyExplore"
+                style="@style/Widget.MaterialComponents.Button"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="Explore Books"
+                app:icon="@drawable/ic_search"
+                app:iconGravity="textStart"
+                app:iconTint="@android:color/white"
+                app:cornerRadius="12dp" />
 
         </LinearLayout>
 

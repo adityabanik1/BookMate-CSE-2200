@@ -176,7 +176,7 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
             return;
         }
 
-        tvSectionLabel.setText("✨ Featured classics — free to read");
+        tvSectionLabel.setText("Featured Classics — Free to Read");
         tvSectionLabel.setVisibility(View.VISIBLE);
         tvSearchEmpty.setVisibility(View.GONE);
 

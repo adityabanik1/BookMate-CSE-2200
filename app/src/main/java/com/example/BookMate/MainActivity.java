@@ -72,10 +72,9 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     // ── UI References ─────────────────────────────────────────
     private RecyclerView recyclerBooks;
     private View layoutEmptyState;
-    private TextView tvStats;
+    private TextView tvStats, tvStreakValue, tvFinishedValue;
     private MaterialButtonToggleGroup toggleGroupFilter;
     private MaterialButton btnFilterAll, btnFilterWantToRead, btnFilterFinished;
-    private MaterialButton btnTestReminder;
     private SwitchMaterial switchReminder;
     private FloatingActionButton fabSearch;
 
@@ -129,13 +128,20 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         recyclerBooks = findViewById(R.id.recyclerBooks);
         layoutEmptyState = findViewById(R.id.layoutEmptyState);
         tvStats = findViewById(R.id.tvStats);
+        tvStreakValue = findViewById(R.id.tvStreakValue);
+        tvFinishedValue = findViewById(R.id.tvFinishedValue);
         toggleGroupFilter = findViewById(R.id.toggleGroupFilter);
         btnFilterAll = findViewById(R.id.btnFilterAll);
         btnFilterWantToRead = findViewById(R.id.btnFilterWantToRead);
         btnFilterFinished = findViewById(R.id.btnFilterFinished);
-        btnTestReminder = findViewById(R.id.btnTestReminder);
         switchReminder = findViewById(R.id.switchReminder);
         fabSearch = findViewById(R.id.fabSearch);
+
+        View btnEmptyExplore = findViewById(R.id.btnEmptyExplore);
+        if (btnEmptyExplore != null) {
+            btnEmptyExplore.setOnClickListener(v -> UiUtils.animateClick(v, () ->
+                    startActivity(new Intent(MainActivity.this, SearchActivity.class))));
+        }
 
         // ── Setup RecyclerView (Week 9) ───────────────────────
         bookList = new ArrayList<>();
@@ -180,6 +186,11 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
             if (isChecked) {
                 if (ensureNotificationPermission(REQUEST_PERMISSION_SWITCH)) {
                     scheduleDailyReminder();
+                    com.google.android.material.snackbar.Snackbar.make(
+                            findViewById(android.R.id.content),
+                            "Daily reminder scheduled for 9:00 AM",
+                            com.google.android.material.snackbar.Snackbar.LENGTH_LONG
+                    ).setAction("Test", v -> scheduleTestReminder()).show();
                 }
             } else {
                 cancelDailyReminder();
@@ -187,13 +198,6 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
             // Start BookService to log the action (Week 10: Service)
             startBookService(isChecked ? "REMINDER_ENABLED" : "REMINDER_DISABLED");
         });
-
-        // ── Test Reminder button (Week 10: 10-second delay) ──
-        btnTestReminder.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
-            if (ensureNotificationPermission(REQUEST_PERMISSION_TEST)) {
-                scheduleTestReminder();
-            }
-        }));
 
         // ── Request notification permission on launch (Android 13+)
         ensureNotificationPermission(REQUEST_PERMISSION_LAUNCH);
@@ -236,17 +240,22 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     }
 
     /**
-     * Shows "🔥 3-day streak · 2 books finished" at the top of the screen.
+     * Shows reading metrics (streak & completed books) on the dashboard card.
      * Streak comes from ReadingStreak (SharedPreferences), the count from SQLite.
      */
     private void showStats() {
         int streak = ReadingStreak.getStreak(this);
         int finished = dbHelper.getBooksByStatus("FINISHED").size();
 
-        String streakText = (streak > 0)
-                ? "🔥 " + streak + "-day streak"
-                : "📖 Open a book today to start a streak";
-        tvStats.setText(streakText + " · " + finished + " books finished");
+        if (tvStreakValue != null) {
+            tvStreakValue.setText(streak + (streak == 1 ? " Day" : " Days"));
+        }
+        if (tvFinishedValue != null) {
+            tvFinishedValue.setText(finished + (finished == 1 ? " Book" : " Books"));
+        }
+        if (tvStats != null) {
+            tvStats.setText(streak + "-day streak · " + finished + " books finished");
+        }
     }
 
     /**

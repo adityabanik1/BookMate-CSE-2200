@@ -134,24 +134,24 @@ public class BookDetailActivity extends AppCompatActivity {
             // Show the status badge
             tvStatus.setVisibility(View.VISIBLE);
             if ("WANT_TO_READ".equals(book.getStatus())) {
-                tvStatus.setText("📖 Want to Read");
+                tvStatus.setText("Want to Read");
                 BookAdapter.setBadgeColor(tvStatus, R.color.badge_want_to_read);
             } else if ("FINISHED".equals(book.getStatus())) {
-                tvStatus.setText("✅ Finished");
+                tvStatus.setText("Finished");
                 BookAdapter.setBadgeColor(tvStatus, R.color.badge_finished);
             }
 
             // Show reading progress if started
             if (book.getLastReadPosition() > 0) {
                 tvDetailReadingProgress.setVisibility(View.VISIBLE);
-                tvDetailReadingProgress.setText("🔖 " + book.getLastReadPosition() + "% read");
-                btnReadBook.setText("📖  Continue Reading");
+                tvDetailReadingProgress.setText(book.getLastReadPosition() + "% read");
+                btnReadBook.setText("Continue Reading");
             } else if (isGutenberg) {
                 tvDetailReadingProgress.setVisibility(View.GONE);
-                btnReadBook.setText("📖  Read Full Book");
+                btnReadBook.setText("Read Full Book");
             } else {
                 tvDetailReadingProgress.setVisibility(View.GONE);
-                btnReadBook.setText("📖  Start Reading");
+                btnReadBook.setText("Start Reading");
             }
 
             // Show the Delete button
@@ -161,18 +161,18 @@ public class BookDetailActivity extends AppCompatActivity {
             btnDelete.setVisibility(View.GONE);
 
             if (isGutenberg) {
-                tvStatus.setText("📗 Free Full-Text Ebook");
+                tvStatus.setText("Free Full-Text Ebook");
                 BookAdapter.setBadgeColor(tvStatus, R.color.badge_gutenberg);
                 tvStatus.setVisibility(View.VISIBLE);
-                btnReadBook.setText("📖  Read Full Book");
+                btnReadBook.setText("Read Full Book");
             } else if (book.getReadUrl() != null && (book.getReadUrl().contains("archive.org") || book.getReadUrl().contains("openlibrary.org"))) {
                 tvStatus.setText("🏛️ Open Library Catalog");
                 BookAdapter.setBadgeColor(tvStatus, R.color.badge_open_library);
                 tvStatus.setVisibility(View.VISIBLE);
-                btnReadBook.setText("📖  Start Reading");
+                btnReadBook.setText("Start Reading");
             } else {
                 tvStatus.setVisibility(View.GONE);
-                btnReadBook.setText("📖  Start Reading");
+                btnReadBook.setText("Start Reading");
             }
         }
         findViewById(R.id.btnBorrowOnline).setVisibility(
