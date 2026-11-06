@@ -20,7 +20,8 @@
         app:titleTextColor="@android:color/white"
         app:subtitleTextColor="@android:color/white"
         app:navigationIcon="@drawable/ic_arrow_back"
-        app:navigationIconTint="@android:color/white">
+        app:navigationIconTint="@android:color/white"
+        app:popupTheme="@style/ThemeOverlay.BookMate.PopupMenu">
 
         <!-- Mode Toggle & Action Buttons inside Toolbar -->
         <LinearLayout

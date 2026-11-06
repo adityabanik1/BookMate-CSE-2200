@@ -19,7 +19,8 @@
         app:title="Book Details"
         app:titleTextColor="@android:color/white"
         app:navigationIcon="@drawable/ic_arrow_back"
-        app:navigationIconTint="@android:color/white" />
+        app:navigationIconTint="@android:color/white"
+        app:popupTheme="@style/ThemeOverlay.BookMate.PopupMenu" />
 
     <!-- Scrollable content -->
     <ScrollView

@@ -15,7 +15,8 @@
         app:titleTextColor="@color/white"
         app:subtitleTextColor="@color/white"
         app:navigationIcon="@drawable/ic_arrow_back"
-        app:navigationIconTint="@color/white" />
+        app:navigationIconTint="@color/white"
+        app:popupTheme="@style/ThemeOverlay.BookMate.PopupMenu" />
 
     <com.example.BookMate.LoanControlsView
         android:layout_width="match_parent"

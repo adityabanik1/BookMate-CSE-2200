@@ -389,3 +389,17 @@ Sources inspected:
 - **Verification:**
   - 31 unit tests passing (`testDebugUnitTest` 100% successful).
   - Debug APK assembly verified with `assembleDebug`.
+
+### 3-Dot Overflow Menu Contrast & Typography Polish — 2026-11-06
+
+- **3-Dot Overflow Menu Contrast Fix (`ThemeOverlay.BookMate.PopupMenu`):**
+  - Resolved invisible white-on-white text in the toolbar's 3-dot (⋮) overflow menu on `MainActivity`.
+  - Defined explicit `ThemeOverlay.BookMate.PopupMenu` with pure `#FFFFFF` surface, deep charcoal `#1A202C` text color, and high-contrast secondary labels (`#4A5568`), plus dark-mode counterpart (`#242424` surface, `#F8FAFC` text).
+  - Added `app:popupTheme="@style/ThemeOverlay.BookMate.PopupMenu"` across all toolbars and in `Theme.BookMate` (`popupTheme`, `actionBarPopupTheme`).
+  - Added clear emoji icons and legible titles in [`menu_main.xml`](file:///c:/Users/ASUS/AndroidStudioProjects/BookMate/app/src/main/res/menu/menu_main.xml) (`💬 Quotes & Notes`, `🌐 Community Picks`, `☁️ Back up to Cloud`, `📥 Restore from Cloud`, `🚪 Logout`).
+- **Typography & Font Polish Across Buttons and Dialogs:**
+  - Enforced natural Title Case (`android:textAllCaps="false"`) and `sans-serif-medium` across Material Buttons in `Theme.BookMate` (`materialButtonStyle`, `materialButtonOutlinedStyle`), eliminating cramped all-caps button labels.
+  - Applied high-contrast `materialAlertDialogTheme` for all `AlertDialog` popups (chapter selector, dictionary lookup, deletion & restore prompts).
+- **Verification:**
+  - 31/31 unit tests passed (`testDebugUnitTest`).
+  - Debug APK assembly verified with `assembleDebug`.

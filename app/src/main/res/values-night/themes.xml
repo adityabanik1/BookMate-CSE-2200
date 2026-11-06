@@ -13,6 +13,47 @@
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
         <item name="editTextStyle">@style/Widget.BookMate.EditText</item>
         <item name="android:windowAnimationStyle">@style/WindowAnimation.BookMate</item>
-        <!-- Customize your theme here. -->
+
+        <!-- Popup Menu Theme for night mode -->
+        <item name="popupTheme">@style/ThemeOverlay.BookMate.PopupMenu</item>
+        <item name="actionBarPopupTheme">@style/ThemeOverlay.BookMate.PopupMenu</item>
+        <item name="actionMenuTextColor">@color/white</item>
+
+        <!-- Material Alert Dialog Theme for night mode -->
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.BookMate.MaterialAlertDialog</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.BookMate.MaterialAlertDialog</item>
+
+        <!-- Global Button Typography (Natural Title Case, Medium Weight) -->
+        <item name="materialButtonStyle">@style/Widget.BookMate.Button</item>
+        <item name="materialButtonOutlinedStyle">@style/Widget.BookMate.Button.Outlined</item>
+    </style>
+
+    <!-- High-contrast popup / overflow menu theme for night mode -->
+    <style name="ThemeOverlay.BookMate.PopupMenu" parent="ThemeOverlay.MaterialComponents.Dark">
+        <item name="android:colorBackground">#242424</item>
+        <item name="colorSurface">#242424</item>
+        <item name="android:textColor">#F8FAFC</item>
+        <item name="android:textColorPrimary">#F8FAFC</item>
+        <item name="android:textColorSecondary">#CBD5E1</item>
+        <item name="itemIconTint">@color/brand_primary_light</item>
+    </style>
+
+    <!-- Material Alert Dialog Theme for night mode -->
+    <style name="ThemeOverlay.BookMate.MaterialAlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorSurface">#242424</item>
+        <item name="android:textColorPrimary">#F8FAFC</item>
+        <item name="android:textColorSecondary">#CBD5E1</item>
+        <item name="colorPrimary">@color/brand_primary_light</item>
+    </style>
+
+    <!-- Global Button Styles with readable Title Case -->
+    <style name="Widget.BookMate.Button" parent="Widget.MaterialComponents.Button">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="Widget.BookMate.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
     </style>
 </resources>
