@@ -11,7 +11,7 @@
 - **Course / Context:** CSE-2200 (University Android Application Development Course Project)
 - **Primary Objective:** A clean, distraction-free Android application for university students and casual readers to organize reading habits, discover public-domain literature, read with accessibility tools (Text-to-Speech & In-app Dictionary), collect impactful quotes, maintain daily reading streaks, and optionally sync or share recommendations via Firebase.
 - **Repository:** `https://github.com/adityabanik1/BookMate-CSE-2200.git`
-- **Active Git Branch:** `version-2`
+- **Active Git Branch:** `AI-integration-BookMate-v3`
 
 ---
 
