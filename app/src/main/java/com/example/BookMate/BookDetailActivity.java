@@ -2,7 +2,9 @@ package com.example.BookMate;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.view.View;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -16,6 +18,7 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -39,8 +42,12 @@ public class BookDetailActivity extends AppCompatActivity {
 
     // ── UI References ─────────────────────────────────────────
     private TextView tvTitle, tvAuthor, tvYear, tvPublisher, tvStatus, tvDetailReadingProgress;
+    private TextView tvAiSummaryText, tvAiBadge;
+    private View layoutAiLoading;
+    private ImageButton btnAiTts, btnAiRefresh;
     private MaterialButton btnReadBook, btnSaveWantToRead, btnSaveFinished, btnDelete, btnShare;
     private MaterialButton btnRecommend;
+    private TextToSpeech tts;
 
     // ── Data ──────────────────────────────────────────────────
     private Book book;
@@ -83,15 +90,75 @@ public class BookDetailActivity extends AppCompatActivity {
         btnDelete = findViewById(R.id.btnDelete);
         btnShare = findViewById(R.id.btnShare);
         btnRecommend = findViewById(R.id.btnRecommend);
+        tvAiSummaryText = findViewById(R.id.tvAiSummaryText);
+        tvAiBadge = findViewById(R.id.tvAiBadge);
+        layoutAiLoading = findViewById(R.id.layoutAiLoading);
+        btnAiTts = findViewById(R.id.btnAiTts);
+        btnAiRefresh = findViewById(R.id.btnAiRefresh);
+
+        // TTS for AI summary
+        tts = new TextToSpeech(this, status -> {
+            if (status == TextToSpeech.SUCCESS) {
+                tts.setLanguage(Locale.US);
+            }
+        });
+
+        btnAiTts.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
+            String text = tvAiSummaryText.getText().toString();
+            if (!text.isEmpty() && tts != null) {
+                if (tts.isSpeaking()) {
+                    tts.stop();
+                } else {
+                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "AI_SUMMARY");
+                }
+            }
+        }));
+
+        btnAiRefresh.setOnClickListener(v -> UiUtils.animateClick(v, () -> loadAiSummary(true)));
 
         // ── Populate book details ─────────────────────────────
         displayBookDetails();
+
+        // ── Load AI Summary (Gemini 2.5) ──────────────────────
+        loadAiSummary(false);
 
         // ── Check if book is already saved (Week 11: SQLite) ──
         checkSavedStatus();
 
         // ── Button Listeners ──────────────────────────────────
         setupButtonListeners();
+    }
+
+    private void loadAiSummary(boolean forceRefresh) {
+        if (book == null) return;
+        layoutAiLoading.setVisibility(View.VISIBLE);
+        tvAiSummaryText.setVisibility(View.GONE);
+
+        GeminiSummaryService.getBookSummary(this, book.getTitle(), book.getAuthor(), forceRefresh, new GeminiSummaryService.SummaryCallback() {
+            @Override
+            public void onSuccess(String summary, boolean isAiGenerated) {
+                layoutAiLoading.setVisibility(View.GONE);
+                tvAiSummaryText.setText(summary);
+                tvAiSummaryText.setVisibility(View.VISIBLE);
+                tvAiBadge.setText(isAiGenerated ? "Gemini 2.5" : "Overview");
+            }
+
+            @Override
+            public void onError(String errorMessage) {
+                layoutAiLoading.setVisibility(View.GONE);
+                tvAiSummaryText.setText(errorMessage);
+                tvAiSummaryText.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (tts != null) {
+            tts.stop();
+            tts.shutdown();
+        }
     }
 
     @Override

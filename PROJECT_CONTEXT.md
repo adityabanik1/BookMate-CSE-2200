@@ -434,3 +434,20 @@ Sources inspected:
 - **Verification:**
   - 31/31 unit tests passed (`testDebugUnitTest`).
   - Debug APK packaging verified with `assembleDebug` (100% successful).
+
+### Gemini 2.5 Flash AI Book Summary Integration — 2026-11-06
+
+- **Gemini 2.5 Flash Service (`GeminiSummaryService.java`):**
+  - Integrated Google's `gemini-2.5-flash` model (`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`) to generate concise, spoiler-free 3–4 sentence literary summaries.
+  - Asynchronous background execution via `ExecutorService` with main-thread callback updates.
+  - Secure API key resolution: reads `BuildConfig.GEMINI_API_KEY` loaded from ignored `secrets.properties` or private SharedPreferences override.
+  - Automatic resilience & fallback: if no key is configured or device is offline, falls back gracefully to public Wikipedia / Open Library encyclopedic synopses so summaries never fail.
+  - Local caching in `SharedPreferences` (`bookmate_ai_summaries`) keyed by book title and author to eliminate repeated API calls and enable instant offline display.
+- **Book Details AI Summary Card (`BookDetailActivity.java`, `activity_book_detail.xml`):**
+  - Prominent **"AI Overview" Card** positioned directly above the "Read Book" action button.
+  - Features sparkle icon (`ic_auto_awesome`), model badge (`Gemini 2.5` / `Overview`), and dynamic progress state.
+  - Added interactive Text-to-Speech button (`ic_volume_up`) to speak the AI summary aloud.
+  - Added regenerate/refresh button (`ic_refresh`) to bypass cache and request fresh analysis.
+- **Verification:**
+  - 31/31 unit tests passed (`testDebugUnitTest`).
+  - Debug APK assembly verified with `assembleDebug` (100% successful).

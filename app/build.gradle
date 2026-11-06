@@ -15,6 +15,20 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // Load Gemini API Key securely from secrets.properties (ignored by Git)
+        def secretsFile = rootProject.file("secrets.properties")
+        def geminiApiKey = ""
+        if (secretsFile.exists()) {
+            Properties properties = new Properties()
+            properties.load(secretsFile.newDataInputStream())
+            geminiApiKey = properties.getProperty("GEMINI_API_KEY", "")
+        }
+        buildConfigField "String", "GEMINI_API_KEY", "\"${geminiApiKey}\""
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     buildTypes {
