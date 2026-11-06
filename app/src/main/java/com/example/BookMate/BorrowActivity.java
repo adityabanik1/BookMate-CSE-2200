@@ -15,6 +15,12 @@ import android.webkit.WebViewClient;
 import android.widget.TextView;
 import android.widget.ProgressBar;
 import android.view.View;
+import android.view.MotionEvent;
+import android.view.HapticFeedbackConstants;
+import android.animation.Animator;
+import android.animation.AnimatorListenerAdapter;
+import android.animation.ValueAnimator;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.appbar.MaterialToolbar;
@@ -59,6 +65,11 @@ public class BorrowActivity extends AppCompatActivity {
     };
     // Kept only in memory to avoid treating a different account's empty list as a return.
     private String returnSession;
+    private LoanControlsView loanControlsView;
+    private View layoutControlsInner, layoutDragDivider, viewDragPill, layoutBorrowRoot;
+    private TextView tvDragStatusHint, tvDragActionHint;
+    private int naturalControlsHeight = 0;
+    private ValueAnimator splitAnimator;
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
@@ -79,6 +90,14 @@ public class BorrowActivity extends AppCompatActivity {
         finishReturn = findViewById(R.id.btnFinishReturn);
         refresh = findViewById(R.id.btnRefreshLoan);
         stopChecking = findViewById(R.id.btnStopLoanCheck);
+        loanControlsView = findViewById(R.id.loanControlsView);
+        layoutControlsInner = findViewById(R.id.layoutControlsInner);
+        layoutDragDivider = findViewById(R.id.layoutDragDivider);
+        viewDragPill = findViewById(R.id.viewDragPill);
+        layoutBorrowRoot = findViewById(R.id.layoutBorrowRoot);
+        tvDragStatusHint = findViewById(R.id.tvDragStatusHint);
+        tvDragActionHint = findViewById(R.id.tvDragActionHint);
+        setupDraggableSplitter();
         configureWebView();
         connect.setOnClickListener(v -> {
             reset();
@@ -121,6 +140,154 @@ public class BorrowActivity extends AppCompatActivity {
         status.setText(state == null ? R.string.loan_intro : R.string.loan_interrupted);
         updateControls();
         // No heavyweight book page or account request before the user chooses an action.
+    }
+
+    private void setupDraggableSplitter() {
+        if (layoutDragDivider == null || loanControlsView == null) return;
+
+        layoutBorrowRoot.post(() -> {
+            if (isFinishing() || isDestroyed()) return;
+            measureNaturalHeight();
+        });
+
+        layoutDragDivider.setOnTouchListener(new View.OnTouchListener() {
+            private float startRawY;
+            private int initialHeight;
+            private long downTime;
+            private boolean isDragging;
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        startRawY = event.getRawY();
+                        initialHeight = loanControlsView.getHeight();
+                        downTime = System.currentTimeMillis();
+                        isDragging = false;
+                        if (splitAnimator != null && splitAnimator.isRunning()) {
+                            splitAnimator.cancel();
+                        }
+                        if (naturalControlsHeight <= 0) {
+                            measureNaturalHeight();
+                        }
+                        if (viewDragPill != null) {
+                            viewDragPill.setBackgroundColor(getResources().getColor(R.color.brand_primary));
+                        }
+                        v.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+                        return true;
+
+                    case MotionEvent.ACTION_MOVE:
+                        float deltaY = event.getRawY() - startRawY;
+                        if (Math.abs(deltaY) > 8) {
+                            isDragging = true;
+                        }
+                        if (isDragging) {
+                            int targetNatural = naturalControlsHeight > 0 ? naturalControlsHeight : 600;
+                            int newHeight = (int) (initialHeight + deltaY);
+                            int minHeight = 0;
+                            int rootH = layoutBorrowRoot.getHeight() > 0 ? layoutBorrowRoot.getHeight() : 1200;
+                            int maxHeight = (int) (rootH * 0.75f);
+                            if (maxHeight < targetNatural) maxHeight = targetNatural;
+
+                            newHeight = Math.max(minHeight, Math.min(newHeight, maxHeight));
+                            loanControlsView.setCustomHeight(newHeight);
+                            updateSplitHints(newHeight, targetNatural);
+                        }
+                        return true;
+
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        if (viewDragPill != null) {
+                            viewDragPill.setBackgroundResource(R.drawable.bg_drag_handle_pill);
+                        }
+                        long duration = System.currentTimeMillis() - downTime;
+                        float totalDelta = Math.abs(event.getRawY() - startRawY);
+
+                        // 1-Tap Snap Toggle: tap anywhere on the divider
+                        if (!isDragging && totalDelta < 15 && duration < 350) {
+                            v.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+                            toggleSplit();
+                            return true;
+                        }
+
+                        // Fluid snap if user released close to either boundary
+                        int targetNatural = naturalControlsHeight > 0 ? naturalControlsHeight : 600;
+                        int currentHeight = loanControlsView.getHeight();
+                        if (currentHeight < targetNatural * 0.25f) {
+                            animateSplit(currentHeight, 0);
+                        } else if (currentHeight > targetNatural * 0.75f) {
+                            animateSplit(currentHeight, targetNatural);
+                        }
+                        return true;
+                }
+                return false;
+            }
+        });
+    }
+
+    private void measureNaturalHeight() {
+        if (layoutControlsInner == null || layoutBorrowRoot == null) return;
+        int width = layoutBorrowRoot.getWidth() > 0 ? layoutBorrowRoot.getWidth()
+                : getResources().getDisplayMetrics().widthPixels;
+        layoutControlsInner.measure(
+                View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        );
+        int measured = layoutControlsInner.getMeasuredHeight();
+        if (measured > 0) {
+            naturalControlsHeight = measured;
+        }
+    }
+
+    private void toggleSplit() {
+        if (loanControlsView == null) return;
+        int current = loanControlsView.getHeight();
+        if (naturalControlsHeight <= 0) measureNaturalHeight();
+        int targetNatural = naturalControlsHeight > 0 ? naturalControlsHeight : 600;
+
+        if (current > targetNatural / 2) {
+            // Collapse controls to maximize reader
+            animateSplit(current, 0);
+        } else {
+            // Expand controls
+            animateSplit(current, targetNatural);
+        }
+    }
+
+    private void animateSplit(int from, int to) {
+        if (loanControlsView == null) return;
+        if (splitAnimator != null && splitAnimator.isRunning()) {
+            splitAnimator.cancel();
+        }
+        splitAnimator = ValueAnimator.ofInt(from, to);
+        splitAnimator.setDuration(240);
+        splitAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
+        splitAnimator.addUpdateListener(anim -> {
+            int val = (int) anim.getAnimatedValue();
+            loanControlsView.setCustomHeight(val);
+        });
+        splitAnimator.addListener(new AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                int targetNatural = naturalControlsHeight > 0 ? naturalControlsHeight : 600;
+                if (to >= targetNatural) {
+                    loanControlsView.setCustomHeight(-1); // restore natural wrap_content
+                }
+                updateSplitHints(to, targetNatural);
+            }
+        });
+        splitAnimator.start();
+    }
+
+    private void updateSplitHints(int height, int naturalHeight) {
+        if (tvDragStatusHint == null || tvDragActionHint == null) return;
+        if (height <= naturalHeight * 0.35f) {
+            tvDragStatusHint.setText(R.string.loan_split_reading);
+            tvDragActionHint.setText(R.string.loan_split_action_expand);
+        } else {
+            tvDragStatusHint.setText(R.string.loan_split_controls);
+            tvDragActionHint.setText(R.string.loan_split_action_collapse);
+        }
     }
 
     private void configureWebView() {
@@ -456,6 +623,10 @@ public class BorrowActivity extends AppCompatActivity {
     }
 
     @Override protected void onDestroy() {
+        if (splitAnimator != null) {
+            splitAnimator.cancel();
+            splitAnimator = null;
+        }
         timers.removeCallbacksAndMessages(null);
         generation++;
         worker.shutdown(); // Allow an already-verified local completion save to finish.

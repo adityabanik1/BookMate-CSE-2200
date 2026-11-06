@@ -43,4 +43,8 @@
     <string name="loan_page_error">The provider page could not load. Check your connection, then use Connect account or Borrow &amp; Read to retry. Tap Refresh to verify a pending request.</string>
     <string name="loan_provider_only">Only secure Open Library and Internet Archive pages can open in this account screen.</string>
     <string name="loan_download_notice">This prototype reads loans online. Protected downloads require a compatible authorized reader.</string>
+    <string name="loan_split_controls">⚙️ Loan Controls</string>
+    <string name="loan_split_reading">📖 Reader Mode</string>
+    <string name="loan_split_action_collapse">Expand Reader ▲</string>
+    <string name="loan_split_action_expand">Show Controls ▼</string>
 </resources>

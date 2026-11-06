@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/layoutBorrowRoot"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -19,14 +20,19 @@
         app:navigationIconTint="@color/white"
         app:popupTheme="@style/ThemeOverlay.BookMate.PopupMenu" />
 
+    <!-- Top Section: Loan Controls (Resizable & Collapsible) -->
     <com.example.BookMate.LoanControlsView
+        android:id="@+id/loanControlsView"
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
+
         <LinearLayout
+            android:id="@+id/layoutControlsInner"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:padding="12dp">
+
             <TextView
                 android:id="@+id/tvLoanStatus"
                 android:layout_width="match_parent"
@@ -35,10 +41,13 @@
                 android:textColor="#1A1A1A"
                 android:textSize="14sp"
                 android:accessibilityLiveRegion="polite" />
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
                 android:orientation="horizontal">
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnConnectArchive"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -46,6 +55,7 @@
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
                     android:text="@string/loan_connect" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnBorrowRead"
                     android:layout_width="0dp"
@@ -54,10 +64,12 @@
                     android:layout_marginStart="8dp"
                     android:text="@string/loan_borrow_read" />
             </LinearLayout>
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnFinishReturn"
                     style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -66,6 +78,7 @@
                     android:layout_weight="1"
                     android:text="@string/loan_finish_return"
                     android:enabled="false" />
+
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnRefreshLoan"
                     style="@style/Widget.MaterialComponents.Button.TextButton"
@@ -73,24 +86,44 @@
                     android:layout_height="wrap_content"
                     android:text="@string/loan_refresh" />
             </LinearLayout>
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnGoogleBrowser"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="wrap_content"
+
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/loan_google_browser" />
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnLoanBrowser"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/loan_open_browser" />
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnGoogleBrowser"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/loan_google_browser" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnLoanBrowser"
+                    style="@style/Widget.MaterialComponents.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/loan_open_browser" />
+            </LinearLayout>
+
             <TextView
+                android:id="@+id/tvLoanBrowserSession"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/loan_browser_session"
                 android:textSize="12sp"
+                android:textColor="#555555"
+                android:lineSpacingMultiplier="1.2" />
+
+            <TextView
+                android:id="@+id/tvLoanOrigin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="4dp"
+                android:textSize="12sp"
                 android:textColor="#555555" />
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnStopLoanCheck"
                 style="@style/Widget.MaterialComponents.Button.TextButton"
@@ -101,14 +134,49 @@
         </LinearLayout>
     </com.example.BookMate.LoanControlsView>
 
-    <TextView
-        android:id="@+id/tvLoanOrigin"
+    <!-- Resizable Splitter / Drag Handle -->
+    <LinearLayout
+        android:id="@+id/layoutDragDivider"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:textSize="12sp"
-        android:textColor="#555555" />
+        android:layout_height="34dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_drag_divider"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:clickable="true"
+        android:focusable="true">
+
+        <TextView
+            android:id="@+id/tvDragStatusHint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/loan_split_controls"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="@color/brand_primary"
+            android:ellipsize="end"
+            android:maxLines="1" />
+
+        <View
+            android:id="@+id/viewDragPill"
+            android:layout_width="44dp"
+            android:layout_height="5dp"
+            android:background="@drawable/bg_drag_handle_pill" />
+
+        <TextView
+            android:id="@+id/tvDragActionHint"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="end"
+            android:text="@string/loan_split_action_collapse"
+            android:textSize="12sp"
+            android:textColor="#64748B"
+            android:ellipsize="end"
+            android:maxLines="1" />
+    </LinearLayout>
 
     <ProgressBar
         android:id="@+id/progressLoan"
@@ -117,10 +185,13 @@
         android:layout_height="3dp"
         android:visibility="gone" />
 
+    <!-- Lower Surface: Reader / Book Area (Takes all remaining screen height) -->
     <FrameLayout
+        android:id="@+id/layoutReaderContainer"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
+
         <TextView
             android:id="@+id/tvLoanPlaceholder"
             android:layout_width="match_parent"
@@ -130,6 +201,7 @@
             android:text="@string/loan_ready_hint"
             android:textColor="#555555"
             android:textSize="16sp" />
+
         <WebView
             android:id="@+id/webBorrow"
             android:layout_width="match_parent"
