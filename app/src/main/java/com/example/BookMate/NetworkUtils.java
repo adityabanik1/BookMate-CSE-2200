@@ -93,16 +93,50 @@ public class NetworkUtils {
     }
 
     /**
-     * Searches Project Gutenberg via Gutendex JSON API.
+     * Searches Project Gutenberg via Open Library's dedicated Gutenberg catalog,
+     * with fallback to Gutendex REST API.
      * MUST be called from a background thread.
      */
     public static List<Book> searchGutenberg(String query) {
+        if (query == null || query.trim().isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        // 1. Primary: Search Open Library's Gutenberg index (fast & reliable)
+        List<Book> olGutenberg = searchOpenLibraryGutenberg(query);
+        if (olGutenberg != null && !olGutenberg.isEmpty()) {
+            return olGutenberg;
+        }
+
+        // 2. Secondary / Fallback: Gutendex API with 3.5s timeout
         try {
             String encodedQuery = URLEncoder.encode(query.trim(), "UTF-8");
             String urlString = GUTENDEX_BASE_URL + "?search=" + encodedQuery + "&languages=en";
-            String json = fetchJsonFromUrl(urlString, 10000);
+            String json = fetchJsonFromUrl(urlString, 3500);
             if (json != null) {
-                return parseGutendexJsonResponse(json);
+                List<Book> gutendexResults = parseGutendexJsonResponse(json);
+                if (gutendexResults != null && !gutendexResults.isEmpty()) {
+                    return gutendexResults;
+                }
+            }
+        } catch (Exception e) {
+            // Gutendex unavailable or timed out
+        }
+
+        return olGutenberg != null ? olGutenberg : new ArrayList<>();
+    }
+
+    /**
+     * Queries Open Library specifically for Project Gutenberg ebooks.
+     */
+    public static List<Book> searchOpenLibraryGutenberg(String query) {
+        try {
+            String encodedQuery = URLEncoder.encode(query.trim(), "UTF-8");
+            String urlString = BASE_URL + "?q=" + encodedQuery + "+id_project_gutenberg:*&language=eng&limit=15"
+                    + "&fields=key,title,author_name,first_publish_year,publisher,id_project_gutenberg,cover_i";
+            String json = fetchJsonFromUrl(urlString, 8000);
+            if (json != null) {
+                return parseJsonResponse(json);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -356,7 +390,38 @@ public class NetworkUtils {
             }
         }
 
-        // 2. Query Gutendex API for free public domain books (English)
+        // 2. Query Open Library to check if a Project Gutenberg ID exists for this book
+        try {
+            String encodedTitle = URLEncoder.encode(title.trim(), "UTF-8");
+            String olUrl = BASE_URL + "?q=" + encodedTitle + "+id_project_gutenberg:*&limit=1&fields=id_project_gutenberg";
+            String jsonResponse = downloadTextFromUrl(olUrl, 50000);
+            if (jsonResponse != null) {
+                JSONObject root = new JSONObject(jsonResponse);
+                if (root.has("docs")) {
+                    JSONArray docs = root.getJSONArray("docs");
+                    if (docs.length() > 0) {
+                        JSONObject doc = docs.getJSONObject(0);
+                        if (doc.has("id_project_gutenberg")) {
+                            JSONArray pgArray = doc.getJSONArray("id_project_gutenberg");
+                            if (pgArray.length() > 0) {
+                                String pgId = pgArray.getString(0);
+                                String text = downloadTextFromUrl("https://www.gutenberg.org/cache/epub/" + pgId + "/pg" + pgId + ".txt", MAX_BOOK_CHARS);
+                                if (text == null) {
+                                    text = downloadTextFromUrl("https://www.gutenberg.org/files/" + pgId + "/" + pgId + "-0.txt", MAX_BOOK_CHARS);
+                                }
+                                if (text != null && text.length() > 200) {
+                                    return cleanBookText(text);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // 3. Query Gutendex API for free public domain books (English)
         try {
             String encodedTitle = URLEncoder.encode(title.trim(), "UTF-8");
             String gutendexUrl = "https://gutendex.com/books/?search=" + encodedTitle + "&languages=en";

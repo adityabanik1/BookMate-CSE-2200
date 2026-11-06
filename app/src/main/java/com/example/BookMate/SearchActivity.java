@@ -238,7 +238,11 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
                 }
 
                 if (results.isEmpty()) {
-                    tvSearchEmpty.setText("No results found for \"" + query + "\"");
+                    if (NetworkUtils.PROVIDER_GUTENBERG.equals(activeProvider)) {
+                        tvSearchEmpty.setText("No Project Gutenberg ebooks found for \"" + query + "\".\nTry \"All Providers\" for more editions.");
+                    } else {
+                        tvSearchEmpty.setText("No results found for \"" + query + "\"");
+                    }
                     tvSearchEmpty.setVisibility(View.VISIBLE);
                 } else {
                     tvSearchEmpty.setVisibility(View.GONE);

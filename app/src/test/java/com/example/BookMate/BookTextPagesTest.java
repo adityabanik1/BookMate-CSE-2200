@@ -50,4 +50,25 @@ public class BookTextPagesTest {
         assertEquals(1, pages.size());
         assertEquals("A short passage\n\nSecond paragraph", pages.content(0));
     }
+
+    @Test
+    public void chapterExtractionFindsDistinctChaptersAndFiltersToc() {
+        String book = "Table of Contents\n\n"
+                + "CHAPTER I. Down the Hole\n"
+                + "CHAPTER II. The Pool\n"
+                + "CHAPTER III. A Race\n\n"
+                + "CHAPTER I.\n"
+                + "Down the Rabbit-Hole\n\n"
+                + "Alice was beginning to get very tired of sitting by her sister on the bank, and of having nothing to do: once or twice she had peeped into the book.\n\n"
+                + "CHAPTER II.\n"
+                + "The Pool of Tears\n\n"
+                + "Curiouser and curiouser cried Alice!\n\n";
+
+        BookTextPages pages = new BookTextPages(book);
+        java.util.List<BookTextPages.Chapter> chs = pages.getChapters();
+        assertTrue(chs.size() >= 2);
+        assertTrue(chs.get(0).getTitle().contains("CHAPTER I"));
+        assertTrue(chs.get(0).getTitle().contains("Down the Rabbit-Hole"));
+        assertEquals("CHAPTER I — Down the Rabbit-Hole", pages.getChapterTitleForPage(0));
+    }
 }

@@ -95,7 +95,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     private WebView webViewReader;
     private View layoutSectionControls, layoutOnlineNotice;
     private TextView tvSection;
-    private MaterialButton btnPreviousSection, btnNextSection;
+    private MaterialButton btnPreviousSection, btnNextSection, btnChapters;
     private String fullBookText = "";
     private BookTextPages pages;
     private int currentSection;
@@ -202,6 +202,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         tvSection = findViewById(R.id.tvSection);
         btnPreviousSection = findViewById(R.id.btnPreviousSection);
         btnNextSection = findViewById(R.id.btnNextSection);
+        btnChapters = findViewById(R.id.btnChapters);
         findViewById(R.id.btnOpenWebsite).setOnClickListener(v -> {
             try {
                 startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(getOnlineReadingUrl())));
@@ -279,17 +280,25 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
 
     private void displayBookContent(String content, boolean sample) {
         isSampleText = sample;
-        fullBookText = content;
-        pages = new BookTextPages(content);
+        String formattedText = BookTextFormatter.format(content);
+        fullBookText = formattedText;
+        pages = new BookTextPages(formattedText);
         int savedPercent = book.getLastReadPosition();
-        int offset = !sample && savedPercent > 0 && savedPercent <= 100
-                ? (int) ((long) content.length() * savedPercent / 100) : 0;
-        int section = pages.pageForOffset(offset);
-        int length = pages.end(section) - pages.start(section);
-        float fraction = length > 0 ? (offset - pages.start(section)) / (float) length : 0;
+        int section;
+        float fraction;
+        if (!sample && savedPercent > 0 && savedPercent <= 100) {
+            int offset = (int) ((long) formattedText.length() * savedPercent / 100);
+            section = pages.pageForOffset(offset);
+            int length = pages.end(section) - pages.start(section);
+            fraction = length > 0 ? (offset - pages.start(section)) / (float) length : 0;
+        } else {
+            // First time reading: start directly at first story chapter if front matter exists
+            section = pages.getFirstContentSection();
+            fraction = 0f;
+        }
         showSection(section, fraction);
         if (quoteToShow != null) {
-            int quoteStart = content.indexOf(quoteToShow);
+            int quoteStart = formattedText.indexOf(quoteToShow);
             if (quoteStart >= 0) {
                 highlightAndScroll(quoteStart, quoteToShow.length());
             } else {
@@ -306,9 +315,19 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         currentSection = section;
         isRenderingSection = true;
         tvReaderContent.setText(pages.content(section));
-        tvSection.setText("Section " + (section + 1) + " of " + pages.size());
+
+        String chapterTitle = pages.getChapterTitleForPage(section);
+        if (chapterTitle != null && !chapterTitle.isEmpty()) {
+            tvSection.setText(chapterTitle + " (" + (section + 1) + "/" + pages.size() + ")");
+        } else {
+            tvSection.setText("Section " + (section + 1) + " of " + pages.size());
+        }
         btnPreviousSection.setEnabled(section > 0);
         btnNextSection.setEnabled(section + 1 < pages.size());
+        if (btnChapters != null) {
+            btnChapters.setVisibility(!isWebViewMode && pages.getChapters().size() > 1
+                    ? View.VISIBLE : View.GONE);
+        }
         layoutSectionControls.setVisibility(!isWebViewMode && pages.size() > 1
                 ? View.VISIBLE : View.GONE);
         scrollReader.post(() -> {
@@ -464,9 +483,13 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         // ── Find in book (🔍) ─────────────────────────────────
         btnFind.setOnClickListener(v -> UiUtils.animateClick(v, this::showFindDialog));
 
-        // ── Section controls ──────────────────────────────────
+        // ── Section & Chapter Navigation controls ─────────────
         btnPreviousSection.setOnClickListener(v -> UiUtils.animateClick(v, () -> showSection(currentSection - 1, 0)));
         btnNextSection.setOnClickListener(v -> UiUtils.animateClick(v, () -> showSection(currentSection + 1, 0)));
+        if (btnChapters != null) {
+            btnChapters.setOnClickListener(v -> UiUtils.animateClick(v, this::showChaptersDialog));
+        }
+        tvSection.setOnClickListener(v -> UiUtils.animateClick(v, this::showChaptersDialog));
 
         // ── Save quote / Define / Read aloud in the text-selection menu
         setupSelectionMenu();
@@ -568,6 +591,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         tvSection.setTextColor(textColor);
         btnPreviousSection.setTextColor(textColor);
         btnNextSection.setTextColor(textColor);
+        if (btnChapters != null) btnChapters.setTextColor(textColor);
 
         View capsule = findViewById(R.id.layoutFontSizeCapsule);
         if (capsule != null && capsule.getBackground() instanceof GradientDrawable) {
@@ -976,6 +1000,37 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         } else {
             super.onBackPressed();
         }
+    }
+
+    private void showChaptersDialog() {
+        if (pages == null || pages.getChapters().isEmpty()) {
+            Toast.makeText(this, "No chapter list available for this book", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        java.util.List<BookTextPages.Chapter> chs = pages.getChapters();
+        String[] chapterTitles = new String[chs.size()];
+        int selectedIdx = 0;
+        String currentChapter = pages.getChapterTitleForPage(currentSection);
+        for (int i = 0; i < chs.size(); i++) {
+            BookTextPages.Chapter ch = chs.get(i);
+            boolean isActive = ch.getTitle().equals(currentChapter);
+            chapterTitles[i] = (isActive ? "▶ " : "    ")
+                    + ch.getTitle() + "  (Sec " + (ch.getSectionIndex() + 1) + ")";
+            if (isActive) {
+                selectedIdx = i;
+            }
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("📑 Book Chapters")
+                .setSingleChoiceItems(chapterTitles, selectedIdx, (dialog, which) -> {
+                    dialog.dismiss();
+                    BookTextPages.Chapter selected = chs.get(which);
+                    showSection(selected.getSectionIndex(), 0f);
+                    Toast.makeText(this, "Jumped to " + selected.getTitle(), Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("Close", null)
+                .show();
     }
 
     @Override

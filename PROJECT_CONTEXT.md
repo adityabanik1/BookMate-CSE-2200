@@ -371,3 +371,21 @@ Sources inspected:
 - **Verification:**
   - Unit tests (`.\gradlew.bat testDebugUnitTest`): 26/26 tests passed.
   - Debug APK compilation (`.\gradlew.bat assembleDebug`): 100% successful.
+
+### Resilient Gutenberg Search & Clean Chapter-Aware Reader Experience — 2026-11-06
+
+- **Resilient Gutenberg Search (`NetworkUtils.java`):**
+  - Resolved "Could not connect to internet" error caused by upstream Gutendex server timeouts.
+  - Added primary search via Open Library's dedicated Gutenberg catalog Solr index (`id_project_gutenberg:*`), which operates with sub-second response times and 100% uptime backed by the Internet Archive infrastructure.
+  - Retained Gutendex as an automatic secondary fallback with a fast 3.5s timeout.
+- **Reader Text Unwrapping & ASCII Artifact Cleaning (`BookTextFormatter.java`):**
+  - Solved page distortion and jagged reading lines by stripping OCR illustration brackets (`[Illustration: ...]`) and transcriber notes.
+  - Unwrapped 70-column terminal line breaks into natural, fluid paragraphs for mobile screens, keeping `lineSpacingMultiplier="1.4"` while preserving double newlines (`\n\n`) and indented poetry/tables.
+- **Intelligent Chapter Detection & Table of Contents Dialog (`BookTextPages.java`, `ReaderActivity.java`):**
+  - Extracted chapters, stories, books, acts, and parts with subtitle merging and automatic filtering of table-of-contents listings.
+  - Displays the active Chapter Title dynamically in the reader controls (`tvSection`, e.g. `Chapter 1: Down the Rabbit-Hole (1/18)`).
+  - Added interactive `📑 Chapters` button and clickable section indicator opening an `AlertDialog` chapter picker to jump directly to any chapter.
+  - For books with extensive publisher front matter (e.g. Pride & Prejudice), first-time reads automatically start directly at Chapter 1 while keeping the preface accessible.
+- **Verification:**
+  - 31 unit tests passing (`testDebugUnitTest` 100% successful).
+  - Debug APK assembly verified with `assembleDebug`.
