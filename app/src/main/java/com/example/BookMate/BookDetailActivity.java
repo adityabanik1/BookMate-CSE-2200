@@ -4,9 +4,13 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.view.inputmethod.InputMethodManager;
+import android.view.inputmethod.EditorInfo;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
@@ -45,6 +49,10 @@ public class BookDetailActivity extends AppCompatActivity {
     private TextView tvAiSummaryText, tvAiBadge;
     private View layoutAiLoading;
     private ImageButton btnAiTts, btnAiRefresh;
+    private LinearLayout layoutAiChatMessages, layoutAiChatLoading;
+    private EditText etAiChatQuestion;
+    private ImageButton btnAiChatSend;
+    private TextView btnClearAiChat;
     private MaterialButton btnReadBook, btnSaveWantToRead, btnSaveFinished, btnDelete, btnShare;
     private MaterialButton btnRecommend;
     private TextToSpeech tts;
@@ -95,6 +103,12 @@ public class BookDetailActivity extends AppCompatActivity {
         layoutAiLoading = findViewById(R.id.layoutAiLoading);
         btnAiTts = findViewById(R.id.btnAiTts);
         btnAiRefresh = findViewById(R.id.btnAiRefresh);
+        layoutAiChatMessages = findViewById(R.id.layoutAiChatMessages);
+        layoutAiChatLoading = findViewById(R.id.layoutAiChatLoading);
+        etAiChatQuestion = findViewById(R.id.etAiChatQuestion);
+        btnAiChatSend = findViewById(R.id.btnAiChatSend);
+        btnClearAiChat = findViewById(R.id.btnClearAiChat);
+        setupAiChat();
 
         // TTS for AI summary
         tts = new TextToSpeech(this, status -> {
@@ -150,6 +164,185 @@ public class BookDetailActivity extends AppCompatActivity {
                 tvAiSummaryText.setVisibility(View.VISIBLE);
             }
         });
+    }
+
+    private void setupAiChat() {
+        TextView chipGenre = findViewById(R.id.chipGenre);
+        TextView chipPages = findViewById(R.id.chipPages);
+        TextView chipCharacters = findViewById(R.id.chipCharacters);
+        TextView chipPlot = findViewById(R.id.chipPlot);
+
+        if (chipGenre != null) {
+            chipGenre.setOnClickListener(v -> UiUtils.animateClick(v, () ->
+                    sendAiQuestion("What is the genre, tone, and literary style of this book?")));
+        }
+
+        if (chipPages != null) {
+            chipPages.setOnClickListener(v -> UiUtils.animateClick(v, () ->
+                    sendAiQuestion("How many pages is this book, and what is the typical reading length?")));
+        }
+
+        if (chipCharacters != null) {
+            chipCharacters.setOnClickListener(v -> UiUtils.animateClick(v, () ->
+                    sendAiQuestion("Who are the primary characters in this book and what are their roles?")));
+        }
+
+        if (chipPlot != null) {
+            chipPlot.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
+                etAiChatQuestion.setText("What happened to ");
+                etAiChatQuestion.setSelection(etAiChatQuestion.getText().length());
+                etAiChatQuestion.requestFocus();
+                InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.showSoftInput(etAiChatQuestion, InputMethodManager.SHOW_IMPLICIT);
+                }
+            }));
+        }
+
+        if (btnAiChatSend != null) {
+            btnAiChatSend.setOnClickListener(v -> UiUtils.animateClick(v, this::handleUserSend));
+        }
+
+        if (etAiChatQuestion != null) {
+            etAiChatQuestion.setOnEditorActionListener((v, actionId, event) -> {
+                if (actionId == EditorInfo.IME_ACTION_SEND || actionId == EditorInfo.IME_ACTION_DONE) {
+                    handleUserSend();
+                    return true;
+                }
+                return false;
+            });
+        }
+
+        if (btnClearAiChat != null) {
+            btnClearAiChat.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
+                layoutAiChatMessages.removeAllViews();
+                btnClearAiChat.setVisibility(View.GONE);
+            }));
+        }
+    }
+
+    private void handleUserSend() {
+        if (etAiChatQuestion == null) return;
+        String query = etAiChatQuestion.getText().toString().trim();
+        if (query.isEmpty()) return;
+        etAiChatQuestion.setText("");
+        sendAiQuestion(query);
+    }
+
+    private void sendAiQuestion(String question) {
+        if (book == null || layoutAiChatMessages == null) return;
+
+        // Dismiss soft keyboard
+        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (imm != null && getCurrentFocus() != null) {
+            imm.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), 0);
+        }
+
+        addUserQuestionBubble(question);
+        if (layoutAiChatLoading != null) {
+            layoutAiChatLoading.setVisibility(View.VISIBLE);
+        }
+
+        GeminiSummaryService.askBookQuestion(this, book.getTitle(), book.getAuthor(), question,
+                new GeminiSummaryService.ChatCallback() {
+                    @Override
+                    public void onSuccess(String answer) {
+                        if (layoutAiChatLoading != null) layoutAiChatLoading.setVisibility(View.GONE);
+                        addAiResponseBubble(answer);
+                    }
+
+                    @Override
+                    public void onError(String errorMessage) {
+                        if (layoutAiChatLoading != null) layoutAiChatLoading.setVisibility(View.GONE);
+                        addAiResponseBubble(errorMessage);
+                    }
+                });
+    }
+
+    private void addUserQuestionBubble(String question) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(android.view.Gravity.END);
+        LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        rowParams.setMargins(0, 8, 0, 8);
+        row.setLayoutParams(rowParams);
+
+        TextView bubble = new TextView(this);
+        bubble.setText(question);
+        bubble.setTextColor(android.graphics.Color.WHITE);
+        bubble.setTextSize(13);
+        bubble.setBackgroundResource(R.drawable.bg_chat_bubble_user);
+        bubble.setPadding(32, 20, 32, 20);
+        LinearLayout.LayoutParams bubbleParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        bubbleParams.setMargins(80, 0, 0, 0);
+        bubble.setLayoutParams(bubbleParams);
+
+        row.addView(bubble);
+        layoutAiChatMessages.addView(row);
+        if (btnClearAiChat != null) {
+            btnClearAiChat.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void addAiResponseBubble(String answer) {
+        LinearLayout container = new LinearLayout(this);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setBackgroundResource(R.drawable.bg_chat_bubble_ai);
+        container.setPadding(28, 20, 28, 20);
+        LinearLayout.LayoutParams containerParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        containerParams.setMargins(0, 6, 40, 10);
+        container.setLayoutParams(containerParams);
+
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        headerParams.setMargins(0, 0, 0, 8);
+        header.setLayoutParams(headerParams);
+
+        TextView badge = new TextView(this);
+        badge.setText("Gemini 2.5");
+        badge.setTextSize(10);
+        badge.setTypeface(null, android.graphics.Typeface.BOLD);
+        badge.setTextColor(getResources().getColor(R.color.brand_primary));
+        badge.setBackgroundResource(R.drawable.bg_badge);
+        badge.setPadding(14, 4, 14, 4);
+        header.addView(badge);
+
+        View spacer = new View(this);
+        header.addView(spacer, new LinearLayout.LayoutParams(0, 1, 1f));
+
+        ImageButton btnSpeak = new ImageButton(this);
+        btnSpeak.setImageResource(R.drawable.ic_volume_up);
+        btnSpeak.setColorFilter(getResources().getColor(R.color.brand_primary));
+        btnSpeak.setBackgroundResource(android.R.color.transparent);
+        btnSpeak.setContentDescription("Listen to Answer");
+        btnSpeak.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
+            if (tts != null) {
+                if (tts.isSpeaking()) {
+                    tts.stop();
+                } else {
+                    tts.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "AI_CHAT");
+                }
+            }
+        }));
+        header.addView(btnSpeak, new LinearLayout.LayoutParams(60, 60));
+
+        container.addView(header);
+
+        TextView tvAnswer = new TextView(this);
+        tvAnswer.setText(answer);
+        tvAnswer.setTextColor(android.graphics.Color.parseColor("#1E293B"));
+        tvAnswer.setTextSize(13);
+        tvAnswer.setLineSpacing(0, 1.25f);
+        tvAnswer.setTextIsSelectable(true);
+        container.addView(tvAnswer);
+
+        layoutAiChatMessages.addView(container);
     }
 
     @Override

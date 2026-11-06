@@ -22,19 +22,21 @@ import java.util.concurrent.Executors;
 
 /**
  * ============================================================
- * GeminiSummaryService.java — Generative AI Book Summaries
+ * GeminiSummaryService.java — Generative AI Book Summaries & Chat
  * ============================================================
- * Generates concise, engaging, spoiler-free summaries of any book
- * using Google's Gemini 2.5 Flash API (gemini-2.5-flash).
+ * Generates concise, engaging, spoiler-free summaries and answers
+ * interactive reader questions about any book (genre, page count,
+ * characters, plot points) using Google's Gemini 2.5 Flash API.
  *
  * Features:
- * - Primary: Google Gemini 2.5 Flash API.
+ * - Primary: Google Gemini 2.5 Flash API (gemini-2.5-flash).
+ * - Interactive Book Chat: Answers custom questions, character inquiries,
+ *   genre classifications, and page count queries.
  * - Key Security: Loaded from BuildConfig.GEMINI_API_KEY (secrets.properties)
  *   or private SharedPreferences.
- * - Offline/Failover: Automatically falls back to public Wikipedia / Open
- *   Library synopsis if the Gemini API key is missing or offline.
- * - Caching: Summaries are persisted in private SharedPreferences
- *   so repeated views are instant and consume zero API quota.
+ * - Offline/Failover: Automatically falls back gracefully when offline or
+ *   when API keys are unconfigured.
+ * - Caching: Summaries are persisted in private SharedPreferences.
  * ============================================================
  */
 public class GeminiSummaryService {
@@ -52,6 +54,11 @@ public class GeminiSummaryService {
 
     public interface SummaryCallback {
         void onSuccess(String summary, boolean isAiGenerated);
+        void onError(String errorMessage);
+    }
+
+    public interface ChatCallback {
+        void onSuccess(String answer);
         void onError(String errorMessage);
     }
 
@@ -112,7 +119,40 @@ public class GeminiSummaryService {
     }
 
     /**
-     * Calls Gemini 2.5 Flash generateContent API.
+     * Answers a user question about a specific book (genre, page count, characters, plot)
+     * using Google's Gemini 2.5 Flash API or graceful intelligent fallback.
+     */
+    public static void askBookQuestion(Context context, String title, String author, String question, ChatCallback callback) {
+        if (question == null || question.trim().isEmpty()) {
+            callback.onError("Please enter a question.");
+            return;
+        }
+
+        String apiKey = getEffectiveApiKey(context);
+
+        executor.execute(() -> {
+            try {
+                if (apiKey != null && !apiKey.trim().isEmpty()) {
+                    String answer = callGeminiChatApi(title, author, question.trim(), apiKey);
+                    if (answer != null && !answer.trim().isEmpty()) {
+                        mainHandler.post(() -> callback.onSuccess(answer));
+                        return;
+                    }
+                }
+
+                String fallback = buildFallbackAnswer(title, author, question.trim());
+                mainHandler.post(() -> callback.onSuccess(fallback));
+
+            } catch (Exception e) {
+                Log.w(TAG, "Chat API error: " + e.getMessage());
+                String fallback = buildFallbackAnswer(title, author, question.trim());
+                mainHandler.post(() -> callback.onSuccess(fallback));
+            }
+        });
+    }
+
+    /**
+     * Calls Gemini 2.5 Flash generateContent API for overview summary.
      */
     private static String callGeminiApi(String title, String author, String apiKey) throws Exception {
         URL url = new URL(GEMINI_API_BASE + apiKey);
@@ -128,7 +168,6 @@ public class GeminiSummaryService {
                 (author != null && !author.isEmpty() ? " by " + author : "") + ". " +
                 "Highlight the central premise, major themes, and why it is a compelling read.";
 
-        // Construct JSON Payload
         JSONObject textPart = new JSONObject();
         textPart.put("text", prompt);
 
@@ -174,6 +213,72 @@ public class GeminiSummaryService {
     }
 
     /**
+     * Calls Gemini 2.5 Flash API for interactive Q&A about the book.
+     */
+    private static String callGeminiChatApi(String title, String author, String question, String apiKey) throws Exception {
+        URL url = new URL(GEMINI_API_BASE + apiKey);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("POST");
+        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+        conn.setConnectTimeout(14000);
+        conn.setReadTimeout(18000);
+        conn.setDoOutput(true);
+
+        String prompt = "You are BookMate AI, an expert, enthusiastic literary companion assisting a reader with the book \""
+                + title + "\"" + (author != null && !author.isEmpty() ? " by " + author : "") + ".\n\n"
+                + "User question: \"" + question + "\"\n\n"
+                + "Guidelines:\n"
+                + "- Answer directly, accurately, and concisely (2 to 4 sentences).\n"
+                + "- If asked about genre: describe the genre, atmosphere, and literary style.\n"
+                + "- If asked about page count or length: provide realistic estimates for standard print editions and average reading time.\n"
+                + "- If asked about characters or plot (e.g., what happened to a specific character): provide accurate character details and arcs. If major plot twists or endings are involved, start with a polite spoiler warning: '(Spoiler Warning: ...)'\n"
+                + "- Maintain a warm, engaging, literary tone.";
+
+        JSONObject textPart = new JSONObject();
+        textPart.put("text", prompt);
+
+        JSONArray partsArray = new JSONArray();
+        partsArray.put(textPart);
+
+        JSONObject contentObj = new JSONObject();
+        contentObj.put("parts", partsArray);
+
+        JSONArray contentsArray = new JSONArray();
+        contentsArray.put(contentObj);
+
+        JSONObject requestJson = new JSONObject();
+        requestJson.put("contents", contentsArray);
+
+        byte[] outputBytes = requestJson.toString().getBytes(StandardCharsets.UTF_8);
+        try (OutputStream os = conn.getOutputStream()) {
+            os.write(outputBytes);
+            os.flush();
+        }
+
+        int responseCode = conn.getResponseCode();
+        if (responseCode == HttpURLConnection.HTTP_OK) {
+            String responseStr = readStream(conn.getInputStream());
+            JSONObject responseJson = new JSONObject(responseStr);
+            JSONArray candidates = responseJson.optJSONArray("candidates");
+            if (candidates != null && candidates.length() > 0) {
+                JSONObject firstCandidate = candidates.getJSONObject(0);
+                JSONObject content = firstCandidate.optJSONObject("content");
+                if (content != null) {
+                    JSONArray parts = content.optJSONArray("parts");
+                    if (parts != null && parts.length() > 0) {
+                        return parts.getJSONObject(0).optString("text", "").trim();
+                    }
+                }
+            }
+        } else {
+            String errResponse = readStream(conn.getErrorStream());
+            Log.w(TAG, "Gemini Chat API error (" + responseCode + "): " + errResponse);
+        }
+
+        return null;
+    }
+
+    /**
      * Fallback synopsis from public encyclopedic endpoint (Wikipedia REST API).
      */
     private static String fetchPublicSynopsis(String title) {
@@ -207,6 +312,23 @@ public class GeminiSummaryService {
         return "Discover \"" + title + "\"" + (author != null && !author.isEmpty() ? " by " + author : "") +
                 ", an acclaimed work featuring rich character development and timeless themes. " +
                 "Start reading to explore its narrative and historical significance.";
+    }
+
+    private static String buildFallbackAnswer(String title, String author, String query) {
+        String q = query.toLowerCase();
+        if (q.contains("genre") || q.contains("category") || q.contains("type")) {
+            return "\"" + title + "\" is celebrated as a classic work of literature. " +
+                    "To enable detailed AI genre and sub-genre analysis with Gemini 2.5 Flash, ensure your device is online or check your Gemini key.";
+        } else if (q.contains("page") || q.contains("length") || q.contains("how long")) {
+            return "Standard editions of \"" + title + "\" typically range between 250 to 450 pages depending on publication format. " +
+                    "In BookMate's native reader, you can read the complete uncompressed text in convenient chapter sections.";
+        } else if (q.contains("character") || q.contains("who") || q.contains("happen") || q.contains("plot") || q.contains("ending")) {
+            return "To explore in-depth character arcs and plot developments with Gemini 2.5 Flash, make sure your device is connected to the internet. " +
+                    "Tip: You can add your Gemini API key in secrets.properties to unlock full interactive character Q&A!";
+        } else {
+            return "Thank you for asking about \"" + title + "\"! " +
+                    "Gemini 2.5 Flash is ready to answer questions about characters, plot, genre, and themes when online.";
+        }
     }
 
     public static String getEffectiveApiKey(Context context) {
