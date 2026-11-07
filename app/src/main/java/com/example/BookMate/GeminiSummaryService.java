@@ -28,7 +28,7 @@ import java.util.concurrent.Executors;
  *
  * Features:
  * - Primary: Google Gemini Flash API with automatic resilient fallback
- *   across candidate models (gemini-3.5-flash, gemini-3.5-flash-lite,
+ *   across candidate models (gemini-3.5-flash-lite, gemini-3.5-flash,
  *   gemini-3.8-flash, and legacy gemini-2.5-flash).
  * - Interactive Book Chat: Answers custom questions, character inquiries,
  *   genre classifications, and page count queries.
@@ -45,13 +45,13 @@ public class GeminiSummaryService {
     private static final String PREFS_API_KEY = "gemini_api_key_override";
 
     // Candidate models in preference order:
-    // 1) gemini-3.5-flash (primary active production model for current keys)
-    // 2) gemini-3.5-flash-lite (high-speed, high-availability fallback)
+    // 1) gemini-3.5-flash-lite (primary active high-speed, high-availability model)
+    // 2) gemini-3.5-flash (standard production fallback)
     // 3) gemini-3.8-flash (advanced model; handles spikes via fallback)
     // 4) gemini-2.5-flash (retained for legacy accounts)
     private static final String[] CANDIDATE_MODELS = {
-            "gemini-3.5-flash",
             "gemini-3.5-flash-lite",
+            "gemini-3.5-flash",
             "gemini-3.8-flash",
             "gemini-2.5-flash"
     };
