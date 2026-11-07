@@ -131,8 +131,8 @@ public class NetworkUtils {
      */
     public static List<Book> searchOpenLibraryGutenberg(String query) {
         try {
-            String encodedQuery = URLEncoder.encode(query.trim(), "UTF-8");
-            String urlString = BASE_URL + "?q=" + encodedQuery + "+id_project_gutenberg:*&language=eng&limit=15"
+            String encodedQuery = URLEncoder.encode("(" + query.trim() + ") AND id_project_gutenberg:*", "UTF-8");
+            String urlString = BASE_URL + "?q=" + encodedQuery + "&language=eng&limit=15"
                     + "&fields=key,title,author_name,first_publish_year,publisher,id_project_gutenberg,cover_i";
             String json = fetchJsonFromUrl(urlString, 8000);
             if (json != null) {
@@ -224,26 +224,20 @@ public class NetworkUtils {
         }
 
         List<Book> combined = new ArrayList<>();
-        Set<String> seenTitles = new HashSet<>();
 
         if (gutenbergResults != null) {
             for (Book b : gutenbergResults) {
                 combined.add(b);
-                seenTitles.add(normalizeTitle(b.getTitle()));
             }
         }
 
         if (openLibResults != null) {
             for (Book b : openLibResults) {
-                String norm = normalizeTitle(b.getTitle());
-                if (!seenTitles.contains(norm)) {
-                    combined.add(b);
-                    seenTitles.add(norm);
-                }
+                combined.add(b);
             }
         }
 
-        return combined;
+        return BookSearchRanking.rank(query, combined);
     }
 
     private static String normalizeTitle(String title) {
