@@ -207,7 +207,7 @@
                             android:paddingEnd="8dp"
                             android:paddingTop="2dp"
                             android:paddingBottom="2dp"
-                            android:text="Gemini 2.5"
+                            android:text="Gemini Flash"
                             android:textSize="10sp"
                             android:textStyle="bold"
                             android:textColor="@color/brand_primary"
@@ -260,7 +260,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Generating summary with Gemini 2.5..."
+                            android:text="Generating summary with Gemini..."
                             android:textSize="13sp"
                             android:textColor="#64748B" />
 
@@ -420,7 +420,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Gemini 2.5 is thinking..."
+                            android:text="Gemini is thinking..."
                             android:textSize="12sp"
                             android:textColor="#64748B" />
                     </LinearLayout>

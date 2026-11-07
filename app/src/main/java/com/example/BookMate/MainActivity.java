@@ -1,13 +1,19 @@
 package com.example.BookMate;
 
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.HapticFeedbackConstants;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -78,6 +84,16 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     private SwitchMaterial switchReminder;
     private FloatingActionButton fabSearch;
 
+    // ── Soothing Offline Indicator Views (Week 10: Dynamic BroadcastReceiver) ──
+    private View layoutToolbarOfflineBadge;
+    private View dotToolbarRedMark;
+    private TextView tvToolbarOfflineStatus;
+    private View layoutOfflineBanner;
+    private View dotBannerRedMark;
+    private NetworkMonitor networkMonitor;
+    private ObjectAnimator redMarkAnimator;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+
     // ── Data ──────────────────────────────────────────────────
     private BookAdapter adapter;
     private List<Book> bookList;
@@ -93,6 +109,11 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d(TAG, "onCreate: MainActivity created");
+
+        // Restore active filter on auto-rotation
+        if (savedInstanceState != null) {
+            currentFilter = savedInstanceState.getString("current_filter", null);
+        }
 
         // ── Must be signed in (e.g. if opened from the reminder notification after logout)
         if (FirebaseAuth.getInstance().getCurrentUser() == null) {
@@ -123,6 +144,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
 
         // ── Initialize database helper (Week 11) ──────────────
         dbHelper = new DatabaseHelper(this);
+        dbHelper.seedInitialBooksIfEmpty(); // Ensures completed section has completed classics
 
         // ── Initialize UI references ──────────────────────────
         recyclerBooks = findViewById(R.id.recyclerBooks);
@@ -130,12 +152,36 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         tvStats = findViewById(R.id.tvStats);
         tvStreakValue = findViewById(R.id.tvStreakValue);
         tvFinishedValue = findViewById(R.id.tvFinishedValue);
+
+        // Interactive Dashboard Card metrics
+        View layoutStreakMetric = findViewById(R.id.layoutStreakMetric);
+        if (layoutStreakMetric != null) {
+            layoutStreakMetric.setOnClickListener(v -> UiUtils.animateClick(v, this::showStreakHistoryDialog));
+        }
+
+        View layoutFinishedMetric = findViewById(R.id.layoutFinishedMetric);
+        if (layoutFinishedMetric != null) {
+            layoutFinishedMetric.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
+                toggleGroupFilter.check(R.id.btnFilterFinished);
+                if (recyclerBooks != null) recyclerBooks.smoothScrollToPosition(0);
+            }));
+        }
+
         toggleGroupFilter = findViewById(R.id.toggleGroupFilter);
         btnFilterAll = findViewById(R.id.btnFilterAll);
         btnFilterWantToRead = findViewById(R.id.btnFilterWantToRead);
         btnFilterFinished = findViewById(R.id.btnFilterFinished);
         switchReminder = findViewById(R.id.switchReminder);
         fabSearch = findViewById(R.id.fabSearch);
+
+        // ── Offline indicator references & dynamic monitor (Week 10) ──
+        layoutToolbarOfflineBadge = findViewById(R.id.layoutToolbarOfflineBadge);
+        dotToolbarRedMark = findViewById(R.id.dotToolbarRedMark);
+        tvToolbarOfflineStatus = findViewById(R.id.tvToolbarOfflineStatus);
+        layoutOfflineBanner = findViewById(R.id.layoutOfflineBanner);
+        dotBannerRedMark = findViewById(R.id.dotBannerRedMark);
+
+        networkMonitor = new NetworkMonitor(this, this::updateNetworkState);
 
         View btnEmptyExplore = findViewById(R.id.btnEmptyExplore);
         if (btnEmptyExplore != null) {
@@ -203,6 +249,96 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         ensureNotificationPermission(REQUEST_PERMISSION_LAUNCH);
     }
 
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (networkMonitor != null) {
+            networkMonitor.start();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (networkMonitor != null) {
+            networkMonitor.stop();
+        }
+        stopRedMarkPulse();
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("current_filter", currentFilter);
+    }
+
+    /**
+     * Updates the soothing "Offline" indicator with red mark when WiFi / cellular is off.
+     * (Week 10: Dynamic system broadcast response)
+     */
+    private void updateNetworkState(boolean isOnline) {
+        if (layoutToolbarOfflineBadge == null) return;
+
+        if (!isOnline) {
+            // Signal "Offline" with a red mark — soothing vibe
+            layoutToolbarOfflineBadge.setVisibility(View.VISIBLE);
+            layoutToolbarOfflineBadge.setBackgroundResource(R.drawable.bg_toolbar_offline_pill);
+            dotToolbarRedMark.setBackgroundResource(R.drawable.bg_red_dot);
+            tvToolbarOfflineStatus.setText("Offline");
+            tvToolbarOfflineStatus.setTextColor(Color.parseColor("#FEE2E2"));
+            startRedMarkPulse(dotToolbarRedMark);
+
+            if (layoutOfflineBanner != null) {
+                layoutOfflineBanner.setVisibility(View.VISIBLE);
+                startRedMarkPulse(dotBannerRedMark);
+            }
+        } else {
+            // Reconnected online — soothing reassurance
+            stopRedMarkPulse();
+            if (layoutOfflineBanner != null) {
+                layoutOfflineBanner.setVisibility(View.GONE);
+            }
+
+            dotToolbarRedMark.setAlpha(1.0f);
+            dotToolbarRedMark.setBackgroundResource(R.drawable.bg_green_dot);
+            layoutToolbarOfflineBadge.setBackgroundResource(R.drawable.bg_toolbar_online_pill);
+            tvToolbarOfflineStatus.setText("Online");
+            tvToolbarOfflineStatus.setTextColor(Color.parseColor("#D1FAE5"));
+
+            // After 2.5 seconds of reassurance, gently hide the badge
+            mainHandler.postDelayed(() -> {
+                if (NetworkMonitor.isOnline(MainActivity.this)) {
+                    layoutToolbarOfflineBadge.animate()
+                            .alpha(0f)
+                            .setDuration(400)
+                            .withEndAction(() -> {
+                                layoutToolbarOfflineBadge.setVisibility(View.GONE);
+                                layoutToolbarOfflineBadge.setAlpha(1f);
+                            })
+                            .start();
+                }
+            }, 2500);
+        }
+    }
+
+    private void startRedMarkPulse(View dot) {
+        if (dot == null) return;
+        if (redMarkAnimator != null) redMarkAnimator.cancel();
+        redMarkAnimator = ObjectAnimator.ofFloat(dot, "alpha", 1.0f, 0.35f, 1.0f);
+        redMarkAnimator.setDuration(1500);
+        redMarkAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        redMarkAnimator.start();
+    }
+
+    private void stopRedMarkPulse() {
+        if (redMarkAnimator != null) {
+            redMarkAnimator.cancel();
+            redMarkAnimator = null;
+        }
+        if (dotToolbarRedMark != null) dotToolbarRedMark.setAlpha(1.0f);
+        if (dotBannerRedMark != null) dotBannerRedMark.setAlpha(1.0f);
+    }
+
     /**
      * Week 8: onResume — Refresh the book list every time
      * the user returns to this Activity (e.g., after saving
@@ -256,6 +392,79 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         if (tvStats != null) {
             tvStats.setText(streak + "-day streak · " + finished + " books finished");
         }
+    }
+
+    /**
+     * Displays an interactive dialog showing day-by-day streak history,
+     * books read on previous days, and reading times (5+ min goal).
+     */
+    private void showStreakHistoryDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_streak_history, null);
+        builder.setView(dialogView);
+        AlertDialog dialog = builder.create();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
+
+        TextView tvTitle = dialogView.findViewById(R.id.tvStreakDialogTitle);
+        TextView tvTodayStatus = dialogView.findViewById(R.id.tvTodayStreakStatus);
+        LinearLayout layoutList = dialogView.findViewById(R.id.layoutStreakHistoryList);
+        View btnClose = dialogView.findViewById(R.id.btnStreakDialogClose);
+
+        int streak = ReadingStreak.getStreak(this);
+        if (tvTitle != null) {
+            tvTitle.setText(streak + "-Day Reading Streak 🔥");
+        }
+
+        int todaySecs = ReadingStreak.getTodayReadingSeconds(this);
+        int todayMins = Math.max(1, (int) Math.round(todaySecs / 60.0));
+        boolean todayMet = ReadingStreak.isTodayGoalMet(this);
+
+        if (tvTodayStatus != null) {
+            if (todayMet) {
+                tvTodayStatus.setText("Today: " + todayMins + " mins read • Goal Met ✓ (5m+)");
+            } else {
+                int remainingMins = Math.max(1, (int) Math.ceil((ReadingStreak.MIN_READING_TIME_SECONDS - todaySecs) / 60.0));
+                tvTodayStatus.setText("Today: " + todayMins + " mins • " + remainingMins + "m to reach 5m goal");
+            }
+        }
+
+        if (layoutList != null) {
+            layoutList.removeAllViews();
+            List<ReadingStreak.DayLog> history = ReadingStreak.getReadingHistory(this);
+            for (ReadingStreak.DayLog log : history) {
+                View itemView = getLayoutInflater().inflate(R.layout.item_streak_day, layoutList, false);
+                TextView tvDate = itemView.findViewById(R.id.tvStreakItemDate);
+                TextView tvBook = itemView.findViewById(R.id.tvStreakItemBook);
+                TextView tvDuration = itemView.findViewById(R.id.tvStreakItemDuration);
+                TextView tvBadge = itemView.findViewById(R.id.tvStreakItemBadge);
+
+                if (tvDate != null) tvDate.setText(log.getDisplayDate());
+                if (tvBook != null) {
+                    tvBook.setText(log.getBookTitle() + (log.getBookAuthor() != null && !log.getBookAuthor().isEmpty() ? " • " + log.getBookAuthor() : ""));
+                }
+                if (tvDuration != null) tvDuration.setText(log.getFormattedDuration());
+
+                if (tvBadge != null) {
+                    if (log.isGoalMet()) {
+                        tvBadge.setText("✓ 5m+ Goal");
+                        tvBadge.setTextColor(Color.parseColor("#15803D"));
+                    } else {
+                        tvBadge.setText("In Progress");
+                        tvBadge.setTextColor(Color.parseColor("#B45309"));
+                    }
+                }
+
+                layoutList.addView(itemView);
+            }
+        }
+
+        if (btnClose != null) {
+            btnClose.setOnClickListener(v -> UiUtils.animateClick(v, dialog::dismiss));
+        }
+
+        dialog.show();
     }
 
     /**

@@ -1,5 +1,7 @@
 package com.example.BookMate;
 
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -57,6 +59,10 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
     private RecyclerView recyclerSearchResults;
     private TextView tvSearchEmpty;
     private TextView tvSectionLabel;
+    private View layoutSearchOfflineBanner;
+    private View dotSearchRedMark;
+    private NetworkMonitor networkMonitor;
+    private ObjectAnimator redMarkAnimator;
 
     // ── Data & Provider State ─────────────────────────────────
     private BookAdapter adapter;
@@ -91,6 +97,10 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         recyclerSearchResults = findViewById(R.id.recyclerSearchResults);
         tvSearchEmpty = findViewById(R.id.tvSearchEmpty);
         tvSectionLabel = findViewById(R.id.tvSectionLabel);
+        layoutSearchOfflineBanner = findViewById(R.id.layoutSearchOfflineBanner);
+        dotSearchRedMark = findViewById(R.id.dotSearchRedMark);
+
+        networkMonitor = new NetworkMonitor(this, this::updateSearchNetworkState);
 
         // ── Default provider selection ────────────────────────
         btnProviderAll.setChecked(true);
@@ -272,6 +282,49 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
             if (imm != null) {
                 imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
             }
+        }
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (networkMonitor != null) {
+            networkMonitor.start();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (networkMonitor != null) {
+            networkMonitor.stop();
+        }
+        if (redMarkAnimator != null) {
+            redMarkAnimator.cancel();
+            redMarkAnimator = null;
+        }
+    }
+
+    private void updateSearchNetworkState(boolean isOnline) {
+        if (layoutSearchOfflineBanner == null) return;
+        if (!isOnline) {
+            layoutSearchOfflineBanner.setVisibility(View.VISIBLE);
+            if (dotSearchRedMark != null) {
+                if (redMarkAnimator != null) redMarkAnimator.cancel();
+                redMarkAnimator = ObjectAnimator.ofFloat(dotSearchRedMark, "alpha", 1.0f, 0.35f, 1.0f);
+                redMarkAnimator.setDuration(1500);
+                redMarkAnimator.setRepeatCount(ValueAnimator.INFINITE);
+                redMarkAnimator.start();
+            }
+        } else {
+            if (redMarkAnimator != null) {
+                redMarkAnimator.cancel();
+                redMarkAnimator = null;
+            }
+            if (dotSearchRedMark != null) {
+                dotSearchRedMark.setAlpha(1.0f);
+            }
+            layoutSearchOfflineBanner.setVisibility(View.GONE);
         }
     }
 }

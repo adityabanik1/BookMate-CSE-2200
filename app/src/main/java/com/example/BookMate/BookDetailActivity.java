@@ -154,7 +154,7 @@ public class BookDetailActivity extends AppCompatActivity {
                 layoutAiLoading.setVisibility(View.GONE);
                 tvAiSummaryText.setText(summary);
                 tvAiSummaryText.setVisibility(View.VISIBLE);
-                tvAiBadge.setText(isAiGenerated ? "Gemini 2.5" : "Overview");
+                tvAiBadge.setText(isAiGenerated ? "Gemini Flash" : "Overview");
             }
 
             @Override
@@ -305,7 +305,7 @@ public class BookDetailActivity extends AppCompatActivity {
         header.setLayoutParams(headerParams);
 
         TextView badge = new TextView(this);
-        badge.setText("Gemini 2.5");
+        badge.setText("Gemini Flash");
         badge.setTextSize(10);
         badge.setTypeface(null, android.graphics.Typeface.BOLD);
         badge.setTextColor(getResources().getColor(R.color.brand_primary));

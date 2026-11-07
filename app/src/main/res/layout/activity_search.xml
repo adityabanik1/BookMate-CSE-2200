@@ -152,6 +152,54 @@
 
     </HorizontalScrollView>
 
+    <!-- Soothing Offline Banner in Search -->
+    <LinearLayout
+        android:id="@+id/layoutSearchOfflineBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="6dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_offline_banner"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp"
+        android:visibility="gone">
+
+        <View
+            android:id="@+id/dotSearchRedMark"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_red_dot" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Offline • Showing bundled featured classics. Connect Wi-Fi for live catalogs."
+            android:textColor="#991B1B"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Offline"
+            android:textColor="#DC2626"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_offline_badge"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp" />
+
+    </LinearLayout>
+
     <!-- Smooth Loading Progress Bar -->
     <ProgressBar
         android:id="@+id/progressBar"

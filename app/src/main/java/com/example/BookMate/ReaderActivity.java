@@ -7,6 +7,9 @@ import android.net.Uri;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
 import android.speech.tts.TextToSpeech;
 import android.text.Layout;
@@ -85,6 +88,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     private LinearLayout layoutBookTextContainer;
     private LinearLayout layoutBottomControls;
     private NestedScrollView scrollReader;
+    private MaterialToolbar toolbarReader;
     private TextView tvReaderTitle, tvReaderAuthor, tvReaderContent, tvFontSize, tvProgressPercent;
     private View dividerReader;
     private ProgressBar progressBarReading;
@@ -100,6 +104,18 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     private BookTextPages pages;
     private int currentSection;
     private boolean isRenderingSection;
+    private int restoredSection = -1;
+
+    // ── Live Reading Session Timer (5+ min streak goal) ───────
+    private long sessionStartMillis = 0;
+    private final Handler sessionTimerHandler = new Handler(Looper.getMainLooper());
+    private final Runnable sessionTimerRunnable = new Runnable() {
+        @Override
+        public void run() {
+            updateReadingSessionSubtitle();
+            sessionTimerHandler.postDelayed(this, 8000);
+        }
+    };
 
     // ── Data & Helpers ────────────────────────────────────────
     private Book book;
@@ -135,6 +151,10 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_reader);
 
+        if (savedInstanceState != null) {
+            restoredSection = savedInstanceState.getInt("saved_section", -1);
+        }
+
         dbHelper = new DatabaseHelper(this);
 
         // Retrieve book passed via Explicit Intent
@@ -161,10 +181,11 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         applyFontSize();
         applyTheme(currentTheme, false);
 
-        // Setup Toolbar with back navigation
-        MaterialToolbar toolbar = findViewById(R.id.toolbarReader);
-        toolbar.setTitle(book.getTitle());
-        toolbar.setNavigationOnClickListener(v -> UiUtils.animateClick(v, this::finish));
+        // Setup Toolbar with back navigation & reading session subtitle
+        toolbarReader = findViewById(R.id.toolbarReader);
+        toolbarReader.setTitle(book.getTitle());
+        toolbarReader.setNavigationOnClickListener(v -> UiUtils.animateClick(v, this::finish));
+        updateReadingSessionSubtitle();
 
         // Initialize Android Text-to-Speech Engine
         tts = new TextToSpeech(this, this);
@@ -174,6 +195,12 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
 
         // Setup User Interaction Listeners
         setupListeners();
+    }
+
+    @Override
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt("saved_section", currentSection);
     }
 
     private void initViews() {
@@ -286,7 +313,11 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         int savedPercent = book.getLastReadPosition();
         int section;
         float fraction;
-        if (!sample && savedPercent > 0 && savedPercent <= 100) {
+        if (restoredSection >= 0 && restoredSection < pages.size()) {
+            section = restoredSection;
+            fraction = 0f;
+            restoredSection = -1; // Reset after restoration
+        } else if (!sample && savedPercent > 0 && savedPercent <= 100) {
             int offset = (int) ((long) formattedText.length() * savedPercent / 100);
             section = pages.pageForOffset(offset);
             int length = pages.end(section) - pages.start(section);
@@ -648,6 +679,9 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     @Override
     protected void onPause() {
         super.onPause();
+        sessionTimerHandler.removeCallbacks(sessionTimerRunnable);
+        recordActiveReadingSession();
+
         // Save current reading progress to SQLite
         // (progress is stored as a percent, 0-100; skipped for the sample text
         //  and when the reader was opened from a saved quote)
@@ -1034,6 +1068,40 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
                 })
                 .setNegativeButton("Close", null)
                 .show();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        sessionStartMillis = System.currentTimeMillis();
+        sessionTimerHandler.post(sessionTimerRunnable);
+    }
+
+    private void recordActiveReadingSession() {
+        if (sessionStartMillis > 0 && book != null) {
+            long elapsedSecs = (System.currentTimeMillis() - sessionStartMillis) / 1000;
+            if (elapsedSecs >= 5) { // Count active reading sessions
+                boolean unlocked = ReadingStreak.addReadingTime(this, book.getTitle(), book.getAuthor(), (int) elapsedSecs);
+                if (unlocked) {
+                    Toast.makeText(this, "🎉 Daily 5-minute reading goal achieved! Day added to streak.", Toast.LENGTH_LONG).show();
+                }
+            }
+            sessionStartMillis = System.currentTimeMillis();
+        }
+    }
+
+    private void updateReadingSessionSubtitle() {
+        if (toolbarReader == null) return;
+        long elapsedSecs = sessionStartMillis > 0 ? (System.currentTimeMillis() - sessionStartMillis) / 1000 : 0;
+        int totalTodaySecs = ReadingStreak.getTodayReadingSeconds(this) + (int) elapsedSecs;
+        int mins = Math.max(1, (int) Math.round(totalTodaySecs / 60.0));
+        boolean goalMet = totalTodaySecs >= ReadingStreak.MIN_READING_TIME_SECONDS;
+
+        if (goalMet) {
+            toolbarReader.setSubtitle("⏱️ " + mins + "m today • Goal Met 🔥");
+        } else {
+            toolbarReader.setSubtitle("⏱️ " + mins + "m today • 5m goal");
+        }
     }
 
     @Override

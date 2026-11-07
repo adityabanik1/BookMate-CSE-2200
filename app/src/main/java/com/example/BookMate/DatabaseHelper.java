@@ -260,6 +260,71 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         return count;
     }
 
+    /**
+     * Seeds initial books if the database has 0 finished books.
+     * Ensures the completed section displays completed books (Alice in Wonderland & The Great Gatsby)
+     * and Want-to-Read has Pride & Prejudice for immediate demonstration.
+     */
+    public void seedInitialBooksIfEmpty() {
+        SQLiteDatabase db = this.getWritableDatabase();
+        Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_BOOKS + " WHERE " + COL_STATUS + " = 'FINISHED'", null);
+        int finishedCount = 0;
+        if (cursor != null) {
+            if (cursor.moveToFirst()) {
+                finishedCount = cursor.getInt(0);
+            }
+            cursor.close();
+        }
+
+        if (finishedCount == 0) {
+            // 1. Completed Classic: Alice's Adventures in Wonderland
+            Book alice = new Book(
+                    "Alice's Adventures in Wonderland",
+                    "Lewis Carroll",
+                    "1865",
+                    "Macmillan",
+                    "FINISHED"
+            );
+            alice.setLastReadPosition(100);
+            alice.setReadUrl("https://www.gutenberg.org/ebooks/11.html.images");
+            addOrUpdateBook(alice);
+
+            // 2. Completed Classic: The Great Gatsby
+            Book gatsby = new Book(
+                    "The Great Gatsby",
+                    "F. Scott Fitzgerald",
+                    "1925",
+                    "Charles Scribner's Sons",
+                    "FINISHED"
+            );
+            gatsby.setLastReadPosition(100);
+            gatsby.setReadUrl("https://www.gutenberg.org/ebooks/64317.html.images");
+            addOrUpdateBook(gatsby);
+
+            // 3. Current In-Progress Reading: Pride and Prejudice
+            Cursor checkPnp = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_BOOKS + " WHERE " + COL_TITLE + " LIKE '%Pride and Prejudice%'", null);
+            int pnpCount = 0;
+            if (checkPnp != null) {
+                if (checkPnp.moveToFirst()) {
+                    pnpCount = checkPnp.getInt(0);
+                }
+                checkPnp.close();
+            }
+            if (pnpCount == 0) {
+                Book pride = new Book(
+                        "Pride and Prejudice",
+                        "Jane Austen",
+                        "1813",
+                        "T. Egerton",
+                        "WANT_TO_READ"
+                );
+                pride.setLastReadPosition(35);
+                pride.setReadUrl("https://www.gutenberg.org/ebooks/1342.html.images");
+                addOrUpdateBook(pride);
+            }
+        }
+    }
+
     // ── Quotes & Notes (Version 3) ────────────────────────────
 
     /**

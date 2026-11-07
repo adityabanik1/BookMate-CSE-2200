@@ -23,6 +23,15 @@ android {
             Properties properties = new Properties()
             properties.load(secretsFile.newDataInputStream())
             geminiApiKey = properties.getProperty("GEMINI_API_KEY", "")
+            if (geminiApiKey != null) {
+                geminiApiKey = geminiApiKey.trim()
+                if ((geminiApiKey.startsWith("\"") && geminiApiKey.endsWith("\"")) ||
+                    (geminiApiKey.startsWith("'") && geminiApiKey.endsWith("'"))) {
+                    if (geminiApiKey.length() >= 2) {
+                        geminiApiKey = geminiApiKey.substring(1, geminiApiKey.length() - 1).trim()
+                    }
+                }
+            }
         }
         buildConfigField "String", "GEMINI_API_KEY", "\"${geminiApiKey}\""
     }

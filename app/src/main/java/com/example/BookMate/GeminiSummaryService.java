@@ -26,10 +26,12 @@ import java.util.concurrent.Executors;
  * ============================================================
  * Generates concise, engaging, spoiler-free summaries and answers
  * interactive reader questions about any book (genre, page count,
- * characters, plot points) using Google's Gemini 2.5 Flash API.
+ * characters, plot points) using Google's Gemini Flash API.
  *
  * Features:
- * - Primary: Google Gemini 2.5 Flash API (gemini-2.5-flash).
+ * - Primary: Google Gemini Flash API with automatic resilient fallback
+ *   across candidate models (gemini-3.5-flash, gemini-3.5-flash-lite,
+ *   gemini-3.8-flash, and legacy gemini-2.5-flash).
  * - Interactive Book Chat: Answers custom questions, character inquiries,
  *   genre classifications, and page count queries.
  * - Key Security: Loaded from BuildConfig.GEMINI_API_KEY (secrets.properties)
@@ -45,9 +47,17 @@ public class GeminiSummaryService {
     private static final String PREFS_NAME = "bookmate_ai_summaries";
     private static final String PREFS_API_KEY = "gemini_api_key_override";
 
-    private static final String GEMINI_MODEL = "gemini-2.5-flash";
-    private static final String GEMINI_API_BASE =
-            "https://generativelanguage.googleapis.com/v1beta/models/" + GEMINI_MODEL + ":generateContent?key=";
+    // Candidate models in preference order:
+    // 1) gemini-3.5-flash (primary active production model for current keys)
+    // 2) gemini-3.5-flash-lite (high-speed, high-availability fallback)
+    // 3) gemini-3.8-flash (advanced model; handles spikes via fallback)
+    // 4) gemini-2.5-flash (retained for legacy accounts)
+    private static final String[] CANDIDATE_MODELS = {
+            "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-3.8-flash",
+            "gemini-2.5-flash"
+    };
 
     private static final ExecutorService executor = Executors.newCachedThreadPool();
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -152,78 +162,20 @@ public class GeminiSummaryService {
     }
 
     /**
-     * Calls Gemini 2.5 Flash generateContent API for overview summary.
+     * Calls Gemini generateContent API for overview summary.
      */
     private static String callGeminiApi(String title, String author, String apiKey) throws Exception {
-        URL url = new URL(GEMINI_API_BASE + apiKey);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-        conn.setConnectTimeout(12000);
-        conn.setReadTimeout(15000);
-        conn.setDoOutput(true);
-
         String prompt = "You are an insightful literary guide for BookMate. " +
                 "Write a captivating, spoiler-free 3 to 4 sentence overview of the book \"" + title + "\"" +
                 (author != null && !author.isEmpty() ? " by " + author : "") + ". " +
                 "Highlight the central premise, major themes, and why it is a compelling read.";
-
-        JSONObject textPart = new JSONObject();
-        textPart.put("text", prompt);
-
-        JSONArray partsArray = new JSONArray();
-        partsArray.put(textPart);
-
-        JSONObject contentObj = new JSONObject();
-        contentObj.put("parts", partsArray);
-
-        JSONArray contentsArray = new JSONArray();
-        contentsArray.put(contentObj);
-
-        JSONObject requestJson = new JSONObject();
-        requestJson.put("contents", contentsArray);
-
-        byte[] outputBytes = requestJson.toString().getBytes(StandardCharsets.UTF_8);
-        try (OutputStream os = conn.getOutputStream()) {
-            os.write(outputBytes);
-            os.flush();
-        }
-
-        int responseCode = conn.getResponseCode();
-        if (responseCode == HttpURLConnection.HTTP_OK) {
-            String responseStr = readStream(conn.getInputStream());
-            JSONObject responseJson = new JSONObject(responseStr);
-            JSONArray candidates = responseJson.optJSONArray("candidates");
-            if (candidates != null && candidates.length() > 0) {
-                JSONObject firstCandidate = candidates.getJSONObject(0);
-                JSONObject content = firstCandidate.optJSONObject("content");
-                if (content != null) {
-                    JSONArray parts = content.optJSONArray("parts");
-                    if (parts != null && parts.length() > 0) {
-                        return parts.getJSONObject(0).optString("text", "").trim();
-                    }
-                }
-            }
-        } else {
-            String errResponse = readStream(conn.getErrorStream());
-            Log.w(TAG, "Gemini API error (" + responseCode + "): " + errResponse);
-        }
-
-        return null;
+        return callGeminiGenerateContent(prompt, apiKey);
     }
 
     /**
-     * Calls Gemini 2.5 Flash API for interactive Q&A about the book.
+     * Calls Gemini API for interactive Q&A about the book.
      */
     private static String callGeminiChatApi(String title, String author, String question, String apiKey) throws Exception {
-        URL url = new URL(GEMINI_API_BASE + apiKey);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
-        conn.setConnectTimeout(14000);
-        conn.setReadTimeout(18000);
-        conn.setDoOutput(true);
-
         String prompt = "You are BookMate AI, an expert, enthusiastic literary companion assisting a reader with the book \""
                 + title + "\"" + (author != null && !author.isEmpty() ? " by " + author : "") + ".\n\n"
                 + "User question: \"" + question + "\"\n\n"
@@ -233,48 +185,88 @@ public class GeminiSummaryService {
                 + "- If asked about page count or length: provide realistic estimates for standard print editions and average reading time.\n"
                 + "- If asked about characters or plot (e.g., what happened to a specific character): provide accurate character details and arcs. If major plot twists or endings are involved, start with a polite spoiler warning: '(Spoiler Warning: ...)'\n"
                 + "- Maintain a warm, engaging, literary tone.";
+        return callGeminiGenerateContent(prompt, apiKey);
+    }
 
-        JSONObject textPart = new JSONObject();
-        textPart.put("text", prompt);
-
-        JSONArray partsArray = new JSONArray();
-        partsArray.put(textPart);
-
-        JSONObject contentObj = new JSONObject();
-        contentObj.put("parts", partsArray);
-
-        JSONArray contentsArray = new JSONArray();
-        contentsArray.put(contentObj);
-
-        JSONObject requestJson = new JSONObject();
-        requestJson.put("contents", contentsArray);
-
-        byte[] outputBytes = requestJson.toString().getBytes(StandardCharsets.UTF_8);
-        try (OutputStream os = conn.getOutputStream()) {
-            os.write(outputBytes);
-            os.flush();
+    /**
+     * Unified generator executing against Google's Generative Language API
+     * with automatic fallback across supported Gemini Flash candidate models.
+     */
+    private static String callGeminiGenerateContent(String prompt, String apiKey) {
+        if (apiKey == null || apiKey.trim().isEmpty()) {
+            return null;
         }
 
-        int responseCode = conn.getResponseCode();
-        if (responseCode == HttpURLConnection.HTTP_OK) {
-            String responseStr = readStream(conn.getInputStream());
-            JSONObject responseJson = new JSONObject(responseStr);
-            JSONArray candidates = responseJson.optJSONArray("candidates");
-            if (candidates != null && candidates.length() > 0) {
-                JSONObject firstCandidate = candidates.getJSONObject(0);
-                JSONObject content = firstCandidate.optJSONObject("content");
-                if (content != null) {
-                    JSONArray parts = content.optJSONArray("parts");
-                    if (parts != null && parts.length() > 0) {
-                        return parts.getJSONObject(0).optString("text", "").trim();
+        String cleanedKey = cleanKey(apiKey);
+
+        for (String model : CANDIDATE_MODELS) {
+            HttpURLConnection conn = null;
+            try {
+                String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent?key=" + cleanedKey;
+                URL url = new URL(endpoint);
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json; charset=UTF-8");
+                conn.setRequestProperty("x-goog-api-key", cleanedKey);
+                conn.setConnectTimeout(12000);
+                conn.setReadTimeout(18000);
+                conn.setDoOutput(true);
+
+                JSONObject textPart = new JSONObject();
+                textPart.put("text", prompt);
+
+                JSONArray partsArray = new JSONArray();
+                partsArray.put(textPart);
+
+                JSONObject contentObj = new JSONObject();
+                contentObj.put("parts", partsArray);
+
+                JSONArray contentsArray = new JSONArray();
+                contentsArray.put(contentObj);
+
+                JSONObject requestJson = new JSONObject();
+                requestJson.put("contents", contentsArray);
+
+                byte[] outputBytes = requestJson.toString().getBytes(StandardCharsets.UTF_8);
+                try (OutputStream os = conn.getOutputStream()) {
+                    os.write(outputBytes);
+                    os.flush();
+                }
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == HttpURLConnection.HTTP_OK) {
+                    String responseStr = readStream(conn.getInputStream());
+                    JSONObject responseJson = new JSONObject(responseStr);
+                    JSONArray candidates = responseJson.optJSONArray("candidates");
+                    if (candidates != null && candidates.length() > 0) {
+                        JSONObject firstCandidate = candidates.getJSONObject(0);
+                        JSONObject content = firstCandidate.optJSONObject("content");
+                        if (content != null) {
+                            JSONArray parts = content.optJSONArray("parts");
+                            if (parts != null && parts.length() > 0) {
+                                String text = parts.getJSONObject(0).optString("text", "").trim();
+                                if (!text.isEmpty()) {
+                                    return text;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    String errResponse = readStream(conn.getErrorStream());
+                    Log.w(TAG, "Gemini API attempt with " + model + " failed (" + responseCode + "): " + errResponse);
+                    // Continue to next model on 404 (model not found/authorized), 503 (high demand), 429, etc.
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "Gemini call exception on model " + model + ": " + e.getMessage());
+            } finally {
+                if (conn != null) {
+                    try {
+                        conn.disconnect();
+                    } catch (Exception ignored) {
                     }
                 }
             }
-        } else {
-            String errResponse = readStream(conn.getErrorStream());
-            Log.w(TAG, "Gemini Chat API error (" + responseCode + "): " + errResponse);
         }
-
         return null;
     }
 
@@ -318,16 +310,16 @@ public class GeminiSummaryService {
         String q = query.toLowerCase();
         if (q.contains("genre") || q.contains("category") || q.contains("type")) {
             return "\"" + title + "\" is celebrated as a classic work of literature. " +
-                    "To enable detailed AI genre and sub-genre analysis with Gemini 2.5 Flash, ensure your device is online or check your Gemini key.";
+                    "To enable detailed AI genre and sub-genre analysis with Gemini Flash, ensure your device is online or check your Gemini key.";
         } else if (q.contains("page") || q.contains("length") || q.contains("how long")) {
             return "Standard editions of \"" + title + "\" typically range between 250 to 450 pages depending on publication format. " +
                     "In BookMate's native reader, you can read the complete uncompressed text in convenient chapter sections.";
         } else if (q.contains("character") || q.contains("who") || q.contains("happen") || q.contains("plot") || q.contains("ending")) {
-            return "To explore in-depth character arcs and plot developments with Gemini 2.5 Flash, make sure your device is connected to the internet. " +
+            return "To explore in-depth character arcs and plot developments with Gemini Flash, make sure your device is connected to the internet. " +
                     "Tip: You can add your Gemini API key in secrets.properties to unlock full interactive character Q&A!";
         } else {
             return "Thank you for asking about \"" + title + "\"! " +
-                    "Gemini 2.5 Flash is ready to answer questions about characters, plot, genre, and themes when online.";
+                    "Gemini Flash is ready to answer questions about characters, plot, genre, and themes when online.";
         }
     }
 
@@ -336,13 +328,13 @@ public class GeminiSummaryService {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String overrideKey = prefs.getString(PREFS_API_KEY, null);
         if (overrideKey != null && !overrideKey.trim().isEmpty()) {
-            return overrideKey.trim();
+            return cleanKey(overrideKey);
         }
 
         // Priority 2: BuildConfig GEMINI_API_KEY loaded from secrets.properties
         try {
             if (BuildConfig.GEMINI_API_KEY != null && !BuildConfig.GEMINI_API_KEY.trim().isEmpty()) {
-                return BuildConfig.GEMINI_API_KEY.trim();
+                return cleanKey(BuildConfig.GEMINI_API_KEY);
             }
         } catch (Exception ignored) {
         }
@@ -350,19 +342,31 @@ public class GeminiSummaryService {
         return "";
     }
 
+    private static String cleanKey(String key) {
+        if (key == null) return "";
+        String trimmed = key.trim();
+        if ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) ||
+            (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+            if (trimmed.length() >= 2) {
+                trimmed = trimmed.substring(1, trimmed.length() - 1).trim();
+            }
+        }
+        return trimmed;
+    }
+
     public static void setApiKeyOverride(Context context, String apiKey) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         if (apiKey == null || apiKey.trim().isEmpty()) {
             prefs.edit().remove(PREFS_API_KEY).apply();
         } else {
-            prefs.edit().putString(PREFS_API_KEY, apiKey.trim()).apply();
+            prefs.edit().putString(PREFS_API_KEY, cleanKey(apiKey)).apply();
         }
     }
 
     private static String buildCacheKey(String title, String author) {
         String cleanTitle = title.toLowerCase().replaceAll("[^a-z0-9]", "_");
         String cleanAuthor = author != null ? author.toLowerCase().replaceAll("[^a-z0-9]", "_") : "";
-        return "ai_summary_" + cleanTitle + "_" + cleanAuthor;
+        return "ai_summary_v3_" + cleanTitle + "_" + cleanAuthor;
     }
 
     private static String readStream(InputStream is) {

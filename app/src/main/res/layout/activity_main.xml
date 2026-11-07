@@ -53,9 +53,94 @@
                 android:textSize="20sp"
                 android:textStyle="bold" />
 
+            <!-- Soothing Offline / Online Status Pill in Toolbar -->
+            <LinearLayout
+                android:id="@+id/layoutToolbarOfflineBadge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:background="@drawable/bg_toolbar_offline_pill"
+                android:paddingStart="8dp"
+                android:paddingEnd="10dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:visibility="gone">
+
+                <!-- Soothing red mark (dot) with subtle pulse -->
+                <View
+                    android:id="@+id/dotToolbarRedMark"
+                    android:layout_width="7dp"
+                    android:layout_height="7dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_red_dot" />
+
+                <TextView
+                    android:id="@+id/tvToolbarOfflineStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Offline"
+                    android:textColor="#FEE2E2"
+                    android:textSize="11sp"
+                    android:textStyle="bold" />
+
+            </LinearLayout>
+
         </LinearLayout>
 
     </com.google.android.material.appbar.MaterialToolbar>
+
+    <!-- Soothing Offline Status Banner Bar -->
+    <LinearLayout
+        android:id="@+id/layoutOfflineBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_marginEnd="14dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="2dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/bg_offline_banner"
+        android:paddingStart="14dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:visibility="gone">
+
+        <!-- Glowing red mark -->
+        <View
+            android:id="@+id/dotBannerRedMark"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:layout_marginEnd="9dp"
+            android:background="@drawable/bg_red_dot" />
+
+        <TextView
+            android:id="@+id/tvOfflineBannerMessage"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Offline • Library &amp; reading available"
+            android:textColor="#991B1B"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Offline"
+            android:textColor="#DC2626"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:background="@drawable/bg_offline_badge"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp" />
+
+    </LinearLayout>
 
     <!-- Reading Metrics Dashboard Card -->
     <com.google.android.material.card.MaterialCardView
@@ -84,11 +169,16 @@
 
             <!-- Streak Counter Metric -->
             <LinearLayout
+                android:id="@+id/layoutStreakMetric"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground"
+                android:padding="4dp">
 
                 <ImageView
                     android:layout_width="26dp"
@@ -115,7 +205,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Daily Streak"
+                        android:text="Daily Streak (5m+)"
                         android:textSize="11sp"
                         android:textColor="#64748B" />
 
@@ -133,11 +223,16 @@
 
             <!-- Finished Books Metric -->
             <LinearLayout
+                android:id="@+id/layoutFinishedMetric"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:gravity="center_vertical"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?attr/selectableItemBackground"
+                android:padding="4dp">
 
                 <ImageView
                     android:layout_width="24dp"
