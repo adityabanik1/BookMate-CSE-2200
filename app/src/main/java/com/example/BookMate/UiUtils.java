@@ -6,13 +6,10 @@ import android.view.animation.DecelerateInterpolator;
 import android.view.animation.OvershootInterpolator;
 
 /**
- * ============================================================
  * UiUtils.java — Fluid & Tactile Micro-Interactions
- * ============================================================
  * Provides responsive, springy click animations and tactile
  * haptic feedback to make buttons and interactive UI elements
  * feel snappy, physical, and clicky.
- * ============================================================
  */
 public class UiUtils {
 

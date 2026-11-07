@@ -26,9 +26,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * ============================================================
  * BookDetailActivity.java — Book Detail View
- * ============================================================
  * Week 8 : Receives book data via Explicit Intent (putExtra).
  *          Shares recommendations via Implicit Intent
  *          (ACTION_SEND, text/plain).
@@ -40,11 +38,10 @@ import java.util.Map;
  * Multi-Provider:
  * - Detects Project Gutenberg vs Open Library/Internet Archive source.
  * - Displays source badges and tailored reading/borrowing actions.
- * ============================================================
  */
 public class BookDetailActivity extends AppCompatActivity {
 
-    // ── UI References ─────────────────────────────────────────
+    // UI References
     private TextView tvTitle, tvAuthor, tvYear, tvPublisher, tvStatus, tvDetailReadingProgress;
     private TextView tvAiSummaryText, tvAiBadge;
     private View layoutAiLoading;
@@ -57,27 +54,28 @@ public class BookDetailActivity extends AppCompatActivity {
     private MaterialButton btnRecommend;
     private TextToSpeech tts;
 
-    // ── Data ──────────────────────────────────────────────────
+    // Data
     private Book book;
     private DatabaseHelper dbHelper;
-
-    // ═══════════════════════════════════════════════════════════
+    private boolean chatInProgress;
+    private int chatGeneration;
+    private int summaryGeneration;
+    private View[] chatSuggestions;
     // Lifecycle — Week 8
-    // ═══════════════════════════════════════════════════════════
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_book_detail);
 
-        // ── Toolbar with back navigation ──────────────────────
+        // Toolbar with back navigation
         MaterialToolbar toolbar = findViewById(R.id.toolbarDetail);
         toolbar.setNavigationOnClickListener(v -> UiUtils.animateClick(v, this::finish));
 
-        // ── Initialize database helper (Week 11) ──────────────
+        // Initialize database helper (Week 11)
         dbHelper = new DatabaseHelper(this);
 
-        // ── Retrieve book from Intent extras (Week 8) ─────────
+        // Retrieve book from Intent extras (Week 8)
         book = (Book) getIntent().getSerializableExtra("book");
         if (book == null) {
             Toast.makeText(this, "Error: No book data", Toast.LENGTH_SHORT).show();
@@ -85,7 +83,7 @@ public class BookDetailActivity extends AppCompatActivity {
             return;
         }
 
-        // ── Initialize UI ─────────────────────────────────────
+        // Initialize UI
         tvTitle = findViewById(R.id.tvDetailTitle);
         tvAuthor = findViewById(R.id.tvDetailAuthor);
         tvYear = findViewById(R.id.tvDetailYear);
@@ -119,46 +117,46 @@ public class BookDetailActivity extends AppCompatActivity {
 
         btnAiTts.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             String text = tvAiSummaryText.getText().toString();
-            if (!text.isEmpty() && tts != null) {
-                if (tts.isSpeaking()) {
-                    tts.stop();
-                } else {
-                    tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "AI_SUMMARY");
-                }
-            }
+            if (!text.isEmpty()) toggleSpeech(text, "AI_SUMMARY");
         }));
 
         btnAiRefresh.setOnClickListener(v -> UiUtils.animateClick(v, () -> loadAiSummary(true)));
 
-        // ── Populate book details ─────────────────────────────
+        // Populate book details
         displayBookDetails();
 
-        // ── Load AI Summary (Gemini 2.5) ──────────────────────
+        // Load AI Summary (Gemini 2.5)
         loadAiSummary(false);
 
-        // ── Check if book is already saved (Week 11: SQLite) ──
+        // Check if book is already saved (Week 11: SQLite)
         checkSavedStatus();
 
-        // ── Button Listeners ──────────────────────────────────
+        // Button Listeners
         setupButtonListeners();
     }
 
     private void loadAiSummary(boolean forceRefresh) {
         if (book == null) return;
+        final int generation = ++summaryGeneration;
+        btnAiRefresh.setEnabled(false);
         layoutAiLoading.setVisibility(View.VISIBLE);
         tvAiSummaryText.setVisibility(View.GONE);
 
         GeminiSummaryService.getBookSummary(this, book.getTitle(), book.getAuthor(), forceRefresh, new GeminiSummaryService.SummaryCallback() {
             @Override
             public void onSuccess(String summary, boolean isAiGenerated) {
+                if (generation != summaryGeneration || isFinishing() || isDestroyed()) return;
+                btnAiRefresh.setEnabled(true);
                 layoutAiLoading.setVisibility(View.GONE);
                 tvAiSummaryText.setText(summary);
                 tvAiSummaryText.setVisibility(View.VISIBLE);
-                tvAiBadge.setText(isAiGenerated ? "Gemini Flash" : "Overview");
+                tvAiBadge.setText(isAiGenerated ? "powered by Gemini" : "Overview");
             }
 
             @Override
             public void onError(String errorMessage) {
+                if (generation != summaryGeneration || isFinishing() || isDestroyed()) return;
+                btnAiRefresh.setEnabled(true);
                 layoutAiLoading.setVisibility(View.GONE);
                 tvAiSummaryText.setText(errorMessage);
                 tvAiSummaryText.setVisibility(View.VISIBLE);
@@ -171,20 +169,19 @@ public class BookDetailActivity extends AppCompatActivity {
         TextView chipPages = findViewById(R.id.chipPages);
         TextView chipCharacters = findViewById(R.id.chipCharacters);
         TextView chipPlot = findViewById(R.id.chipPlot);
+        chatSuggestions = new View[]{chipGenre, chipPages, chipCharacters};
 
-        if (chipGenre != null) {
-            chipGenre.setOnClickListener(v -> UiUtils.animateClick(v, () ->
-                    sendAiQuestion("What is the genre, tone, and literary style of this book?")));
-        }
-
-        if (chipPages != null) {
-            chipPages.setOnClickListener(v -> UiUtils.animateClick(v, () ->
-                    sendAiQuestion("How many pages is this book, and what is the typical reading length?")));
-        }
-
-        if (chipCharacters != null) {
-            chipCharacters.setOnClickListener(v -> UiUtils.animateClick(v, () ->
-                    sendAiQuestion("Who are the primary characters in this book and what are their roles?")));
+        String[] questions = {
+                "What is the genre, tone, and literary style of this book?",
+                "How many pages is this book, and what is the typical reading length?",
+                "Who are the primary characters in this book and what are their roles?"
+        };
+        for (int i = 0; i < chatSuggestions.length; i++) {
+            String question = questions[i];
+            if (chatSuggestions[i] != null) {
+                chatSuggestions[i].setOnClickListener(v ->
+                        UiUtils.animateClick(v, () -> sendAiQuestion(question)));
+            }
         }
 
         if (chipPlot != null) {
@@ -215,6 +212,9 @@ public class BookDetailActivity extends AppCompatActivity {
 
         if (btnClearAiChat != null) {
             btnClearAiChat.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
+                chatGeneration++;
+                setChatLoading(false);
+                if (tts != null) tts.stop();
                 layoutAiChatMessages.removeAllViews();
                 btnClearAiChat.setVisibility(View.GONE);
             }));
@@ -222,7 +222,7 @@ public class BookDetailActivity extends AppCompatActivity {
     }
 
     private void handleUserSend() {
-        if (etAiChatQuestion == null) return;
+        if (etAiChatQuestion == null || chatInProgress) return;
         String query = etAiChatQuestion.getText().toString().trim();
         if (query.isEmpty()) return;
         etAiChatQuestion.setText("");
@@ -230,7 +230,10 @@ public class BookDetailActivity extends AppCompatActivity {
     }
 
     private void sendAiQuestion(String question) {
-        if (book == null || layoutAiChatMessages == null) return;
+        if (book == null || layoutAiChatMessages == null || chatInProgress
+                || isFinishing() || isDestroyed()) return;
+        final int generation = ++chatGeneration;
+        setChatLoading(true);
 
         // Dismiss soft keyboard
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
@@ -239,24 +242,36 @@ public class BookDetailActivity extends AppCompatActivity {
         }
 
         addUserQuestionBubble(question);
-        if (layoutAiChatLoading != null) {
-            layoutAiChatLoading.setVisibility(View.VISIBLE);
-        }
 
         GeminiSummaryService.askBookQuestion(this, book.getTitle(), book.getAuthor(), question,
                 new GeminiSummaryService.ChatCallback() {
                     @Override
                     public void onSuccess(String answer) {
-                        if (layoutAiChatLoading != null) layoutAiChatLoading.setVisibility(View.GONE);
+                        if (generation != chatGeneration || isFinishing() || isDestroyed()) return;
+                        setChatLoading(false);
                         addAiResponseBubble(answer);
                     }
 
                     @Override
                     public void onError(String errorMessage) {
-                        if (layoutAiChatLoading != null) layoutAiChatLoading.setVisibility(View.GONE);
-                        addAiResponseBubble(errorMessage);
+                        onSuccess(errorMessage);
                     }
                 });
+    }
+
+    private void setChatLoading(boolean loading) {
+        chatInProgress = loading;
+        if (layoutAiChatLoading != null) layoutAiChatLoading.setVisibility(loading ? View.VISIBLE : View.GONE);
+        if (btnAiChatSend != null) btnAiChatSend.setEnabled(!loading);
+        if (chatSuggestions != null) {
+            for (View suggestion : chatSuggestions) {
+                if (suggestion != null) suggestion.setEnabled(!loading);
+            }
+        }
+    }
+
+    private int dp(int value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
     private void addUserQuestionBubble(String question) {
@@ -265,7 +280,7 @@ public class BookDetailActivity extends AppCompatActivity {
         row.setGravity(android.view.Gravity.END);
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        rowParams.setMargins(0, 8, 0, 8);
+        rowParams.setMargins(0, dp(4), 0, dp(4));
         row.setLayoutParams(rowParams);
 
         TextView bubble = new TextView(this);
@@ -273,10 +288,10 @@ public class BookDetailActivity extends AppCompatActivity {
         bubble.setTextColor(android.graphics.Color.WHITE);
         bubble.setTextSize(13);
         bubble.setBackgroundResource(R.drawable.bg_chat_bubble_user);
-        bubble.setPadding(32, 20, 32, 20);
+        bubble.setPadding(dp(16), dp(10), dp(16), dp(10));
         LinearLayout.LayoutParams bubbleParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        bubbleParams.setMargins(80, 0, 0, 0);
+        bubbleParams.setMargins(dp(40), 0, 0, 0);
         bubble.setLayoutParams(bubbleParams);
 
         row.addView(bubble);
@@ -290,10 +305,10 @@ public class BookDetailActivity extends AppCompatActivity {
         LinearLayout container = new LinearLayout(this);
         container.setOrientation(LinearLayout.VERTICAL);
         container.setBackgroundResource(R.drawable.bg_chat_bubble_ai);
-        container.setPadding(28, 20, 28, 20);
+        container.setPadding(dp(14), dp(10), dp(14), dp(10));
         LinearLayout.LayoutParams containerParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        containerParams.setMargins(0, 6, 40, 10);
+        containerParams.setMargins(0, dp(3), dp(20), dp(5));
         container.setLayoutParams(containerParams);
 
         LinearLayout header = new LinearLayout(this);
@@ -301,16 +316,16 @@ public class BookDetailActivity extends AppCompatActivity {
         header.setGravity(android.view.Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams headerParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        headerParams.setMargins(0, 0, 0, 8);
+        headerParams.setMargins(0, 0, 0, dp(4));
         header.setLayoutParams(headerParams);
 
         TextView badge = new TextView(this);
-        badge.setText("Gemini Flash");
+        badge.setText("BookMate");
         badge.setTextSize(10);
         badge.setTypeface(null, android.graphics.Typeface.BOLD);
         badge.setTextColor(getResources().getColor(R.color.brand_primary));
         badge.setBackgroundResource(R.drawable.bg_badge);
-        badge.setPadding(14, 4, 14, 4);
+        badge.setPadding(dp(7), dp(2), dp(7), dp(2));
         header.addView(badge);
 
         View spacer = new View(this);
@@ -319,18 +334,13 @@ public class BookDetailActivity extends AppCompatActivity {
         ImageButton btnSpeak = new ImageButton(this);
         btnSpeak.setImageResource(R.drawable.ic_volume_up);
         btnSpeak.setColorFilter(getResources().getColor(R.color.brand_primary));
-        btnSpeak.setBackgroundResource(android.R.color.transparent);
+        android.util.TypedValue touchBackground = new android.util.TypedValue();
+        getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, touchBackground, true);
+        btnSpeak.setBackgroundResource(touchBackground.resourceId);
+        btnSpeak.setPadding(dp(12), dp(12), dp(12), dp(12));
         btnSpeak.setContentDescription("Listen to Answer");
-        btnSpeak.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
-            if (tts != null) {
-                if (tts.isSpeaking()) {
-                    tts.stop();
-                } else {
-                    tts.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "AI_CHAT");
-                }
-            }
-        }));
-        header.addView(btnSpeak, new LinearLayout.LayoutParams(60, 60));
+        btnSpeak.setOnClickListener(v -> UiUtils.animateClick(v, () -> toggleSpeech(answer, "AI_CHAT")));
+        header.addView(btnSpeak, new LinearLayout.LayoutParams(dp(48), dp(48)));
 
         container.addView(header);
 
@@ -343,6 +353,15 @@ public class BookDetailActivity extends AppCompatActivity {
         container.addView(tvAnswer);
 
         layoutAiChatMessages.addView(container);
+    }
+
+    private void toggleSpeech(String text, String utteranceId) {
+        if (tts == null) return;
+        if (tts.isSpeaking()) {
+            tts.stop();
+        } else {
+            tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
+        }
     }
 
     @Override
@@ -360,10 +379,7 @@ public class BookDetailActivity extends AppCompatActivity {
         // Refresh status and reading progress when returning from ReaderActivity
         checkSavedStatus();
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Display Book Details
-    // ═══════════════════════════════════════════════════════════
 
     private void displayBookDetails() {
         tvTitle.setText(book.getTitle());
@@ -427,7 +443,7 @@ public class BookDetailActivity extends AppCompatActivity {
                 tvStatus.setVisibility(View.VISIBLE);
                 btnReadBook.setText("Audiobook".equals(book.getFormatLabel()) ? "Open Audiobook" : "Read Book");
             } else if (book.getReadUrl() != null && (book.getReadUrl().contains("archive.org") || book.getReadUrl().contains("openlibrary.org"))) {
-                tvStatus.setText("🏛️ Open Library Catalog");
+                tvStatus.setText("Open Library Catalog");
                 BookAdapter.setBadgeColor(tvStatus, R.color.badge_open_library);
                 tvStatus.setVisibility(View.VISIBLE);
                 btnReadBook.setText("Start Reading");
@@ -439,10 +455,7 @@ public class BookDetailActivity extends AppCompatActivity {
         findViewById(R.id.btnBorrowOnline).setVisibility(
                 LoanTarget.fromUrl(book.getReadUrl()) != null ? View.VISIBLE : View.GONE);
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Button Actions — Week 8 (Intents) & Week 11 (SQLite)
-    // ═══════════════════════════════════════════════════════════
 
     private void setupButtonListeners() {
         findViewById(R.id.btnBorrowOnline).setOnClickListener(v -> UiUtils.animateClick(v, () -> {
@@ -451,7 +464,7 @@ public class BookDetailActivity extends AppCompatActivity {
             startActivity(intent);
         }));
 
-        // ── Direct Reading: Launch ReaderActivity ─────────────
+        // Direct Reading: Launch ReaderActivity
         btnReadBook.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             if ("Audiobook".equals(book.getFormatLabel())) {
                 startActivity(new Intent(Intent.ACTION_VIEW,
@@ -505,7 +518,7 @@ public class BookDetailActivity extends AppCompatActivity {
                     .show();
         }));
 
-        // ── Share Recommendation (Week 8: Implicit Intent) ────
+        // Share Recommendation (Week 8: Implicit Intent)
         btnShare.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             String shareText = "Check out this book on Bookmate: "
                     + book.getTitle() + " by " + book.getAuthor()
@@ -520,10 +533,7 @@ public class BookDetailActivity extends AppCompatActivity {
         // ── Recommend to Community (Firebase Realtime Database)
         btnRecommend.setOnClickListener(v -> UiUtils.animateClick(v, this::recommendBook));
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Firebase Realtime Database — Recommend
-    // ═══════════════════════════════════════════════════════════
 
     /**
      * Adds this book under /recommendations with push(), which creates

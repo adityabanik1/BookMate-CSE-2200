@@ -14,20 +14,17 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * ============================================================
  * QuoteAdapter.java — RecyclerView Adapter + ViewHolder
- * ============================================================
  * Week 9: Custom Adapter with a reusable ViewHolder pattern
  *         (same structure as BookAdapter), used by
  *         QuotesActivity to show saved quotes.
  *
  * Tap and long-press are passed to the Activity through the
  * OnQuoteClickListener interface.
- * ============================================================
  */
 public class QuoteAdapter extends RecyclerView.Adapter<QuoteAdapter.QuoteViewHolder> {
 
-    // ── Data & Listener ───────────────────────────────────────
+    // Data & Listener
     private List<Quote> quoteList;
     private final OnQuoteClickListener listener;
 
@@ -39,13 +36,13 @@ public class QuoteAdapter extends RecyclerView.Adapter<QuoteAdapter.QuoteViewHol
         void onQuoteLongClick(Quote quote); // long-press → Delete
     }
 
-    // ── Constructor ───────────────────────────────────────────
+    // Constructor
     public QuoteAdapter(List<Quote> quoteList, OnQuoteClickListener listener) {
         this.quoteList = (quoteList != null) ? quoteList : new ArrayList<>();
         this.listener = listener;
     }
 
-    // ── Adapter Methods ───────────────────────────────────────
+    // Adapter Methods
 
     @NonNull
     @Override
@@ -103,15 +100,12 @@ public class QuoteAdapter extends RecyclerView.Adapter<QuoteAdapter.QuoteViewHol
         return quoteList.size();
     }
 
-    // ── Helper: Update the data set ───────────────────────────
+    // Helper: Update the data set
     public void updateQuotes(List<Quote> newQuotes) {
         this.quoteList = (newQuotes != null) ? newQuotes : new ArrayList<>();
         notifyDataSetChanged();
     }
-
-    // ═══════════════════════════════════════════════════════════
     // QuoteViewHolder — Week 9: RecyclerView.ViewHolder
-    // ═══════════════════════════════════════════════════════════
     static class QuoteViewHolder extends RecyclerView.ViewHolder {
         TextView tvQuoteText, tvQuoteSource, tvQuoteNote, tvQuoteDate;
 

@@ -7,13 +7,13 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.graphics.BitmapFactory;
 
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 
 /**
- * ============================================================
  * ReminderReceiver.java — BroadcastReceiver
- * ============================================================
  * Week 10: Receives a broadcast from AlarmManager and
  *          displays a daily reading reminder notification.
  *
@@ -23,7 +23,6 @@ import androidx.core.app.NotificationCompat;
  * - Quote of the day (Week 11: SQLite): if the user has saved
  *   quotes, one random quote is shown in the notification.
  *   BigTextStyle shows the whole quote when it is expanded.
- * ============================================================
  */
 public class ReminderReceiver extends BroadcastReceiver {
 
@@ -43,27 +42,33 @@ public class ReminderReceiver extends BroadcastReceiver {
                 context, 0, openApp, PendingIntent.FLAG_IMMUTABLE);
 
         // Step 3: Pick the text — a saved quote if there is one (Quote of the day)
-        String title = "BookMate Reading Reminder";
-        String message = "Time to read! Open Bookmate and check your 'Want to Read' list.";
+        String title = "A little reading, every day";
+        String message = "Take five minutes for your next chapter. Your reading list is ready.";
 
         DatabaseHelper dbHelper = new DatabaseHelper(context);
         Quote quote = dbHelper.getRandomQuote(); // null if no quotes are saved yet
         dbHelper.close();
 
         if (quote != null) {
-            title = "Quote of the Day — Time to read!";
+            title = "Your daily inspiration";
             message = quote.getFormattedText(); // “quote” + "— Book, Author"
         }
 
         // Step 4: Build the notification
+        BitmapFactory.Options iconOptions = new BitmapFactory.Options();
+        iconOptions.inSampleSize = 8; // Notifications only need a small copy of the logo.
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setSmallIcon(R.drawable.ic_bookmate_notification)
+                .setLargeIcon(BitmapFactory.decodeResource(context.getResources(), R.drawable.bookmate_mark_clean, iconOptions))
+                .setColor(ContextCompat.getColor(context, R.color.brand_primary))
                 .setContentTitle(title)
                 .setContentText(message)
                 // Shows the full text (not just one line) when the notification is expanded
                 .setStyle(new NotificationCompat.BigTextStyle().bigText(message))
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setContentIntent(pendingIntent)
+                .addAction(R.drawable.ic_bookmate_notification, "Open library", pendingIntent)
+                .setCategory(NotificationCompat.CATEGORY_REMINDER)
                 .setAutoCancel(true);
 
         // Step 5: Show the notification
@@ -83,7 +88,7 @@ public class ReminderReceiver extends BroadcastReceiver {
                     CHANNEL_ID,
                     CHANNEL_NAME,
                     NotificationManager.IMPORTANCE_DEFAULT);
-            channel.setDescription("Daily reading reminder from Bookmate");
+            channel.setDescription("Daily reading reminders and saved quotes from BookMate");
 
             NotificationManager manager =
                     (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);

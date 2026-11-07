@@ -16,32 +16,26 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.android.material.button.MaterialButton;
 
 /**
- * ============================================================
  * LoginActivity.java — Login Screen (Launcher)
- * ============================================================
  * Week 8 : Explicit Intent to MainActivity after login.
  * Firebase: Authentication with Email/Password.
  *          - Login          → signInWithEmailAndPassword()
  *          - Create account → createUserWithEmailAndPassword()
  *          - If a user is already signed in, skip this screen
  *            and go straight to MainActivity.
- * ============================================================
  */
 public class LoginActivity extends AppCompatActivity {
 
     private static final String TAG = "LoginActivity";
 
-    // ── UI References ─────────────────────────────────────────
+    // UI References
     private EditText etEmail, etPassword;
     private MaterialButton btnLogin, btnCreateAccount;
     private ProgressBar progressLogin;
 
-    // ── Firebase ──────────────────────────────────────────────
+    // Firebase
     private FirebaseAuth auth;
-
-    // ═══════════════════════════════════════════════════════════
     // Lifecycle — Week 8
-    // ═══════════════════════════════════════════════════════════
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -49,30 +43,26 @@ public class LoginActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
 
-        // ── Already signed in? Skip the login screen ──────────
+        // Already signed in? Skip the login screen
         if (auth.getCurrentUser() != null) {
-            Log.d(TAG, "onCreate: Already signed in as " + auth.getCurrentUser().getEmail());
             openMainActivity();
             return;
         }
 
         setContentView(R.layout.activity_login);
 
-        // ── Initialize UI references ──────────────────────────
+        // Initialize UI references
         etEmail = findViewById(R.id.etEmail);
         etPassword = findViewById(R.id.etPassword);
         btnLogin = findViewById(R.id.btnLogin);
         btnCreateAccount = findViewById(R.id.btnCreateAccount);
         progressLogin = findViewById(R.id.progressLogin);
 
-        // ── Button listeners ──────────────────────────────────
+        // Button listeners
         btnLogin.setOnClickListener(v -> login());
         btnCreateAccount.setOnClickListener(v -> createAccount());
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Firebase Authentication
-    // ═══════════════════════════════════════════════════════════
 
     private void login() {
         if (!isInputValid()) return;
@@ -97,7 +87,6 @@ public class LoginActivity extends AppCompatActivity {
     private void handleAuthResult(Task<AuthResult> task, String successMessage) {
         setLoading(false);
         if (task.isSuccessful()) {
-            Log.d(TAG, "handleAuthResult: " + successMessage);
             Toast.makeText(this, successMessage, Toast.LENGTH_SHORT).show();
             openMainActivity();
         } else {
@@ -108,10 +97,7 @@ public class LoginActivity extends AppCompatActivity {
             Toast.makeText(this, error, Toast.LENGTH_LONG).show();
         }
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Helpers
-    // ═══════════════════════════════════════════════════════════
 
     private String getEmail() {
         return etEmail.getText().toString().trim();

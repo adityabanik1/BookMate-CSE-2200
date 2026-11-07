@@ -14,9 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * ============================================================
  * BookAdapter.java — RecyclerView Adapter + ViewHolder
- * ============================================================
  * Week 9: Custom Adapter with a reusable ViewHolder pattern.
  *         Used by both MainActivity (offline list) and
  *         SearchActivity (online search results across providers).
@@ -25,14 +23,13 @@ import java.util.List;
  * Activities can handle item clicks to open BookDetailActivity.
  * Supports distinct color-coded badges for:
  * - Saved Books ("Want to Read", "Finished")
- * - Project Gutenberg ("📗 Free Ebook")
- * - Open Library / Internet Archive ("🏛️ Open Library")
- * - Curated offline classics ("✨ Featured")
- * ============================================================
+ * - Project Gutenberg ("Free Ebook")
+ * - Open Library / Internet Archive ("Open Library")
+ * - Curated offline classics ("Featured")
  */
 public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder> {
 
-    // ── Data & Listener ───────────────────────────────────────
+    // Data & Listener
     private List<Book> bookList;
     private final OnBookClickListener listener;
     private String unsavedLabel = "Online Result"; // badge text for books not saved yet
@@ -45,13 +42,13 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
         void onBookClick(Book book);
     }
 
-    // ── Constructor ───────────────────────────────────────────
+    // Constructor
     public BookAdapter(List<Book> bookList, OnBookClickListener listener) {
         this.bookList = (bookList != null) ? bookList : new ArrayList<>();
         this.listener = listener;
     }
 
-    // ── Adapter Methods ───────────────────────────────────────
+    // Adapter Methods
 
     @NonNull
     @Override
@@ -92,7 +89,7 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
             holder.tvStatus.setText(book.getFormatLabel());
             setBadgeColor(holder.tvStatus, R.color.badge_gutenberg); // Teal
         } else if (book.getReadUrl() != null && (book.getReadUrl().contains("archive.org") || book.getReadUrl().contains("openlibrary.org"))) {
-            holder.tvStatus.setText("🏛️ Open Library");
+            holder.tvStatus.setText("Open Library");
             setBadgeColor(holder.tvStatus, R.color.badge_open_library); // Purple
         } else {
             holder.tvStatus.setText(unsavedLabel);
@@ -100,13 +97,9 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
         }
 
         // Set click listener — passes the book to the Activity with fluid tactile click
-        holder.itemView.setOnClickListener(v -> {
-            UiUtils.animateClick(v, () -> {
-                if (listener != null) {
-                    listener.onBookClick(book);
-                }
-            });
-        });
+        holder.itemView.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
+            if (listener != null) listener.onBookClick(book);
+        }));
     }
 
     @Override
@@ -114,27 +107,24 @@ public class BookAdapter extends RecyclerView.Adapter<BookAdapter.BookViewHolder
         return bookList.size();
     }
 
-    // ── Helper: Update the data set ───────────────────────────
+    // Helper: Update the data set
     public void updateBooks(List<Book> newBooks) {
         this.bookList = (newBooks != null) ? newBooks : new ArrayList<>();
         notifyDataSetChanged();
     }
 
-    // ── Helper: Change the badge text for unsaved books ───────
+    // Helper: Change the badge text for unsaved books
     public void setUnsavedLabel(String label) {
         this.unsavedLabel = label;
         notifyDataSetChanged();
     }
 
-    // ── Helper: Set badge background color programmatically ───
+    // Helper: Set badge background color programmatically
     public static void setBadgeColor(TextView badge, int colorResId) {
         GradientDrawable bg = (GradientDrawable) badge.getBackground().mutate();
         bg.setColor(ContextCompat.getColor(badge.getContext(), colorResId));
     }
-
-    // ═══════════════════════════════════════════════════════════
     // BookViewHolder — Week 9: RecyclerView.ViewHolder
-    // ═══════════════════════════════════════════════════════════
     static class BookViewHolder extends RecyclerView.ViewHolder {
         TextView tvTitle, tvAuthor, tvYear, tvStatus;
 

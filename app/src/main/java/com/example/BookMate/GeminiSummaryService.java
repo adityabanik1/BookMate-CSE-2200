@@ -21,9 +21,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * ============================================================
  * GeminiSummaryService.java — Generative AI Book Summaries & Chat
- * ============================================================
  * Generates concise, engaging, spoiler-free summaries and answers
  * interactive reader questions about any book (genre, page count,
  * characters, plot points) using Google's Gemini Flash API.
@@ -39,7 +37,6 @@ import java.util.concurrent.Executors;
  * - Offline/Failover: Automatically falls back gracefully when offline or
  *   when API keys are unconfigured.
  * - Caching: Summaries are persisted in private SharedPreferences.
- * ============================================================
  */
 public class GeminiSummaryService {
 
@@ -59,7 +56,7 @@ public class GeminiSummaryService {
             "gemini-2.5-flash"
     };
 
-    private static final ExecutorService executor = Executors.newCachedThreadPool();
+    private static final ExecutorService executor = Executors.newFixedThreadPool(2);
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     public interface SummaryCallback {
@@ -89,7 +86,7 @@ public class GeminiSummaryService {
         if (!forceRefresh && prefs.contains(cacheKey)) {
             String cachedSummary = prefs.getString(cacheKey, null);
             if (cachedSummary != null && !cachedSummary.isEmpty()) {
-                callback.onSuccess(cachedSummary, true);
+                callback.onSuccess(cachedSummary, prefs.getBoolean(cacheKey + "_ai_generated", false));
                 return;
             }
         }
@@ -99,19 +96,21 @@ public class GeminiSummaryService {
         executor.execute(() -> {
             try {
                 if (apiKey != null && !apiKey.trim().isEmpty()) {
-                    // ── Primary: Gemini 2.5 Flash Generation ────────────
+                    // Primary: Gemini 2.5 Flash Generation
                     String aiSummary = callGeminiApi(title, author, apiKey);
                     if (aiSummary != null && !aiSummary.trim().isEmpty()) {
-                        prefs.edit().putString(cacheKey, aiSummary).apply();
+                        prefs.edit().putString(cacheKey, aiSummary)
+                                .putBoolean(cacheKey + "_ai_generated", true).apply();
                         mainHandler.post(() -> callback.onSuccess(aiSummary, true));
                         return;
                     }
                 }
 
-                // ── Fallback: Wikipedia / Public Knowledge Synopsis ─────
+                // Fallback: Wikipedia / Public Knowledge Synopsis
                 String publicSynopsis = fetchPublicSynopsis(title);
                 if (publicSynopsis != null && !publicSynopsis.trim().isEmpty()) {
-                    prefs.edit().putString(cacheKey, publicSynopsis).apply();
+                    prefs.edit().putString(cacheKey, publicSynopsis)
+                            .putBoolean(cacheKey + "_ai_generated", false).apply();
                     mainHandler.post(() -> callback.onSuccess(publicSynopsis, false));
                     return;
                 }
@@ -121,7 +120,7 @@ public class GeminiSummaryService {
                 mainHandler.post(() -> callback.onSuccess(defaultSynopsis, false));
 
             } catch (Exception e) {
-                Log.w(TAG, "Summary generation error: " + e.getMessage());
+                Log.w(TAG, "Summary generation failed: " + e.getClass().getSimpleName());
                 String fallback = buildFallbackLiterarySynopsis(title, author);
                 mainHandler.post(() -> callback.onSuccess(fallback, false));
             }
@@ -154,7 +153,7 @@ public class GeminiSummaryService {
                 mainHandler.post(() -> callback.onSuccess(fallback));
 
             } catch (Exception e) {
-                Log.w(TAG, "Chat API error: " + e.getMessage());
+                Log.w(TAG, "Chat request failed: " + e.getClass().getSimpleName());
                 String fallback = buildFallbackAnswer(title, author, question.trim());
                 mainHandler.post(() -> callback.onSuccess(fallback));
             }
@@ -252,12 +251,12 @@ public class GeminiSummaryService {
                         }
                     }
                 } else {
-                    String errResponse = readStream(conn.getErrorStream());
-                    Log.w(TAG, "Gemini API attempt with " + model + " failed (" + responseCode + "): " + errResponse);
+                    // Log status only: provider bodies and exception URLs may contain private data.
+                    Log.w(TAG, "Gemini API attempt with " + model + " failed (" + responseCode + ")");
                     // Continue to next model on 404 (model not found/authorized), 503 (high demand), 429, etc.
                 }
             } catch (Exception e) {
-                Log.w(TAG, "Gemini call exception on model " + model + ": " + e.getMessage());
+                Log.w(TAG, "Gemini request failed on model " + model + ": " + e.getClass().getSimpleName());
             } finally {
                 if (conn != null) {
                     try {
@@ -274,6 +273,7 @@ public class GeminiSummaryService {
      * Fallback synopsis from public encyclopedic endpoint (Wikipedia REST API).
      */
     private static String fetchPublicSynopsis(String title) {
+        HttpURLConnection conn = null;
         try {
             // Clean title for search (e.g. remove edition subtitles)
             String cleanTitle = title.split("(?i)\\b(volume|vol|part|book)\\b")[0]
@@ -281,7 +281,7 @@ public class GeminiSummaryService {
                     .trim();
             String encoded = URLEncoder.encode(cleanTitle, "UTF-8");
             URL url = new URL("https://en.wikipedia.org/api/rest_v1/page/summary/" + encoded);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setRequestProperty("User-Agent", "BookMate-Android-App/1.0");
             conn.setConnectTimeout(6000);
@@ -296,33 +296,19 @@ public class GeminiSummaryService {
                 }
             }
         } catch (Exception ignored) {
+        } finally {
+            if (conn != null) conn.disconnect();
         }
         return null;
     }
 
     private static String buildFallbackLiterarySynopsis(String title, String author) {
-        return "Discover \"" + title + "\"" + (author != null && !author.isEmpty() ? " by " + author : "") +
-                ", an acclaimed work featuring rich character development and timeless themes. " +
-                "Start reading to explore its narrative and historical significance.";
+        return "Overview unavailable. Please try again later.";
     }
 
     private static String buildFallbackAnswer(String title, String author, String query) {
-        String q = query.toLowerCase();
-        if (q.contains("genre") || q.contains("category") || q.contains("type")) {
-            return "\"" + title + "\" is celebrated as a classic work of literature. " +
-                    "To enable detailed AI genre and sub-genre analysis with Gemini Flash, ensure your device is online or check your Gemini key.";
-        } else if (q.contains("page") || q.contains("length") || q.contains("how long")) {
-            return "Standard editions of \"" + title + "\" typically range between 250 to 450 pages depending on publication format. " +
-                    "In BookMate's native reader, you can read the complete uncompressed text in convenient chapter sections.";
-        } else if (q.contains("character") || q.contains("who") || q.contains("happen") || q.contains("plot") || q.contains("ending")) {
-            return "To explore in-depth character arcs and plot developments with Gemini Flash, make sure your device is connected to the internet. " +
-                    "Tip: You can add your Gemini API key in secrets.properties to unlock full interactive character Q&A!";
-        } else {
-            return "Thank you for asking about \"" + title + "\"! " +
-                    "Gemini Flash is ready to answer questions about characters, plot, genre, and themes when online.";
-        }
+        return "An answer is unavailable right now. Please try again later.";
     }
-
     public static String getEffectiveApiKey(Context context) {
         // Priority 1: User runtime override in preferences
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);

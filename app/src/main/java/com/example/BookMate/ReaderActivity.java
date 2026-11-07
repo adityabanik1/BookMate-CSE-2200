@@ -49,9 +49,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * ============================================================
  * ReaderActivity.java — Direct Book Reading Experience
- * ============================================================
  * Features:
  * 1. Hybrid Reading: Native Text Reader (offline chapters & classics)
  *    and In-App WebView (Internet Archive / Open Library reader).
@@ -68,22 +66,21 @@ import java.util.concurrent.Executors;
  *    highlights it — without changing the saved reading progress.
  * 6. Find in book: 🔍 button → highlights and jumps to the next match.
  * 7. Reading streak: opening a book counts as reading today.
- * ============================================================
  */
 public class ReaderActivity extends AppCompatActivity implements TextToSpeech.OnInitListener {
 
-    // ── Theme Constants ───────────────────────────────────────
+    // Theme Constants
     private static final int THEME_LIGHT = 0;
     private static final int THEME_SEPIA = 1;
     private static final int THEME_DARK = 2;
     private int currentTheme = THEME_LIGHT;
 
-    // ── Font Size Range ───────────────────────────────────────
+    // Font Size Range
     private int currentFontSize = 16; // sp
     private static final int MIN_FONT_SIZE = 12;
     private static final int MAX_FONT_SIZE = 26;
 
-    // ── UI References ─────────────────────────────────────────
+    // UI References
     private LinearLayout layoutReaderRoot;
     private LinearLayout layoutBookTextContainer;
     private LinearLayout layoutBottomControls;
@@ -106,7 +103,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     private boolean isRenderingSection;
     private int restoredSection = -1;
 
-    // ── Live Reading Session Timer (5+ min streak goal) ───────
+    // Live Reading Session Timer (5+ min streak goal)
     private long sessionStartMillis = 0;
     private final Handler sessionTimerHandler = new Handler(Looper.getMainLooper());
     private final Runnable sessionTimerRunnable = new Runnable() {
@@ -117,7 +114,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         }
     };
 
-    // ── Data & Helpers ────────────────────────────────────────
+    // Data & Helpers
     private Book book;
     private DatabaseHelper dbHelper;
     private boolean isWebViewMode = false;
@@ -143,7 +140,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     private SharedPreferences prefs;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
 
-    // ── Text-to-Speech (TTS) ──────────────────────────────────
+    // Text-to-Speech (TTS)
     private TextToSpeech tts;
     private boolean isTtsReady = false;
 
@@ -152,17 +149,14 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     private static final int MENU_DEFINE = 1002;
     private static final int MENU_READ_ALOUD = 1003;
 
-    // ── Quotes & Find in book ─────────────────────────────────
+    // Quotes & Find in book
     private static final int HIGHLIGHT_COLOR = 0x66FFEB3B; // see-through yellow (works on all 3 themes)
     private final BackgroundColorSpan highlight = new BackgroundColorSpan(HIGHLIGHT_COLOR);
     private String quoteToShow = null; // set when opened from QuotesActivity ("Open in book")
     private String lastSearch = "";    // last word searched with Find
     private int lastMatch = -1;        // where it was found (character position)
     private boolean isJumping = false; // true while Find / a quote moves the page (not real reading)
-
-    // ═══════════════════════════════════════════════════════════
     // Lifecycle
-    // ═══════════════════════════════════════════════════════════
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -273,10 +267,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
             btnToggleMode.setVisibility(View.GONE);
         }
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Book Content Loading (Local Cache → Download → Offline Preview)
-    // ═══════════════════════════════════════════════════════════
 
     private void loadBookContent() {
         // 1. Check for previously cached full text on local storage
@@ -465,7 +456,6 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
             fos.write(text.getBytes("UTF-8"));
             fos.close();
         } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
@@ -482,63 +472,38 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         }
         return sb.toString();
     }
-
-    // ═══════════════════════════════════════════════════════════
     // User Interaction Listeners
-    // ═══════════════════════════════════════════════════════════
 
     private void setupListeners() {
 
-        // ── Font Size Controls Stepper (Fluid & Clicky) ───────
-        btnFontDecrease.setOnClickListener(v -> {
-            UiUtils.animateClick(v, () -> {
-                if (currentFontSize > MIN_FONT_SIZE) {
-                    currentFontSize -= 2;
-                    applyFontSize();
-                    UiUtils.pulse(tvFontSize);
-                }
-            });
-        });
+        // Font Size Controls Stepper (Fluid & Clicky)
+        btnFontDecrease.setOnClickListener(v -> UiUtils.animateClick(v, () -> changeFontSize(-2)));
+        btnFontIncrease.setOnClickListener(v -> UiUtils.animateClick(v, () -> changeFontSize(2)));
 
-        btnFontIncrease.setOnClickListener(v -> {
-            UiUtils.animateClick(v, () -> {
-                if (currentFontSize < MAX_FONT_SIZE) {
-                    currentFontSize += 2;
-                    applyFontSize();
-                    UiUtils.pulse(tvFontSize);
-                }
-            });
-        });
+        // Theme Switcher in Toolbar
+        btnThemeToggle.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
+            currentTheme = (currentTheme + 1) % 3;
+            applyTheme(currentTheme, true);
+        }));
 
-        // ── Theme Switcher in Toolbar ─────────────────────────
-        btnThemeToggle.setOnClickListener(v -> {
-            UiUtils.animateClick(v, () -> {
+        // Theme Quick Switcher in Bottom Bar
+        if (btnThemeQuickToggle != null) {
+            btnThemeQuickToggle.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
                 currentTheme = (currentTheme + 1) % 3;
                 applyTheme(currentTheme, true);
-            });
-        });
-
-        // ── Theme Quick Switcher in Bottom Bar ────────────────
-        if (btnThemeQuickToggle != null) {
-            btnThemeQuickToggle.setOnClickListener(v -> {
-                UiUtils.animateClick(v, () -> {
-                    // Quick toggle between White and Dark directly
-                    currentTheme = (currentTheme == THEME_LIGHT) ? THEME_DARK : THEME_LIGHT;
-                    applyTheme(currentTheme, true);
-                });
-            });
+            }));
         }
 
-        // ── Text-to-Speech (TTS) Toggle ───────────────────────
+        // Text-to-Speech (TTS) Toggle
         btnTts.setOnClickListener(v -> UiUtils.animateClick(v, this::toggleTextToSpeech));
 
-        // ── Mode Toggle (Native Text vs In-App WebView) ───────
+        // Mode Toggle (Native Text vs In-App WebView)
         btnToggleMode.setOnClickListener(v -> UiUtils.animateClick(v, this::toggleReaderMode));
 
-        // ── Find in book (🔍) ─────────────────────────────────
+        // Find in book (🔍)
         btnFind.setOnClickListener(v -> UiUtils.animateClick(v, this::showFindDialog));
 
-        // ── Section & Chapter Navigation controls ─────────────
+        // Section & Chapter Navigation controls
         btnPreviousSection.setOnClickListener(v -> UiUtils.animateClick(v, () -> showSection(currentSection - 1, 0)));
         btnNextSection.setOnClickListener(v -> UiUtils.animateClick(v, () -> showSection(currentSection + 1, 0)));
         if (btnChapters != null) {
@@ -549,11 +514,20 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         // ── Save quote / Define / Read aloud in the text-selection menu
         setupSelectionMenu();
 
-        // ── Scroll Listener for Reading Progress ─────────────
+        // Scroll Listener for Reading Progress
         scrollReader.setOnScrollChangeListener((NestedScrollView.OnScrollChangeListener)
                 (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
             calculateAndDisplayProgress();
         });
+    }
+
+    private void changeFontSize(int change) {
+        if ((change < 0 && currentFontSize > MIN_FONT_SIZE)
+                || (change > 0 && currentFontSize < MAX_FONT_SIZE)) {
+            currentFontSize += change;
+            applyFontSize();
+            UiUtils.pulse(tvFontSize);
+        }
     }
 
     private void applyFontSize() {
@@ -568,10 +542,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         btnFontIncrease.setEnabled(currentFontSize < MAX_FONT_SIZE);
         btnFontIncrease.setAlpha(currentFontSize < MAX_FONT_SIZE ? 1.0f : 0.35f);
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Reading Appearance: Themes (White, Dark, Sepia)
-    // ═══════════════════════════════════════════════════════════
 
     private void applyTheme(int theme, boolean showToast) {
         int bgColor, textColor, subtextColor, bottomBgColor, dividerColor, capsuleBg;
@@ -607,8 +578,8 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
                 btnThemeToggle.setImageResource(R.drawable.ic_dark_mode);
                 btnThemeToggle.setContentDescription("Switch Reading Theme");
                 if (btnThemeQuickToggle != null) {
-                    btnThemeQuickToggle.setText("Light Mode");
-                    btnThemeQuickToggle.setIconResource(R.drawable.ic_light_mode);
+                    btnThemeQuickToggle.setText("Dark Mode");
+                    btnThemeQuickToggle.setIconResource(R.drawable.ic_dark_mode);
                     btnThemeQuickToggle.setTextColor(Color.parseColor("#433422"));
                 }
                 if (toolbar != null) toolbar.setBackgroundColor(Color.parseColor("#4E342E"));
@@ -625,9 +596,9 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
                 dividerColor = Color.parseColor("#E2E8F0");
                 capsuleBg = Color.parseColor("#E2E8F0");
                 btnThemeToggle.setImageResource(R.drawable.ic_dark_mode);
-                btnThemeToggle.setContentDescription("Switch to Dark Theme");
+                btnThemeToggle.setContentDescription("Switch to Sepia Theme");
                 if (btnThemeQuickToggle != null) {
-                    btnThemeQuickToggle.setText("Dark Mode");
+                    btnThemeQuickToggle.setText("Sepia Mode");
                     btnThemeQuickToggle.setIconResource(R.drawable.ic_dark_mode);
                     btnThemeQuickToggle.setTextColor(Color.parseColor("#334155"));
                 }
@@ -659,10 +630,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         btnFontIncrease.setColorFilter(textColor);
         prefs.edit().putInt("reader_theme", theme).apply();
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Reading Progress Tracking & Persistence
-    // ═══════════════════════════════════════════════════════════
 
     private void calculateAndDisplayProgress() {
         if (pages == null || isWebViewMode || isRenderingSection) return;
@@ -720,10 +688,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
             tts.stop();
         }
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Text-Selection Menu — Save quote / Define / Read aloud
-    // ═══════════════════════════════════════════════════════════
 
     /**
      * Adds our own items to the menu Android shows when the user
@@ -813,10 +778,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
             });
         });
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Find in Book & Highlight
-    // ═══════════════════════════════════════════════════════════
 
     /** 🔍 button: type a word, then "Find next". Tap 🔍 again to go to the next match. */
     private void showFindDialog() {
@@ -897,20 +859,14 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
             isJumping = false;
         });
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Text-to-Speech (TTS) Implementation
-    // ═══════════════════════════════════════════════════════════
 
     @Override
     public void onInit(int status) {
         if (status == TextToSpeech.SUCCESS) {
             int result = tts.setLanguage(Locale.US);
-            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                isTtsReady = false;
-            } else {
-                isTtsReady = true;
-            }
+            isTtsReady = result != TextToSpeech.LANG_MISSING_DATA
+                    && result != TextToSpeech.LANG_NOT_SUPPORTED;
         } else {
             isTtsReady = false;
         }
@@ -955,10 +911,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
         tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, "BOOKMATE_READER");
         btnTts.setImageResource(android.R.drawable.ic_media_pause);
     }
-
-    // ═══════════════════════════════════════════════════════════
     // In-App WebView Mode
-    // ═══════════════════════════════════════════════════════════
 
     private void toggleReaderMode() {
         if (isFullscreenReading) setFullscreenReading(false);
@@ -1105,34 +1058,35 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     @Override
     protected void onResume() {
         super.onResume();
-        sessionStartMillis = System.currentTimeMillis();
+        sessionStartMillis = android.os.SystemClock.elapsedRealtime();
         sessionTimerHandler.post(sessionTimerRunnable);
     }
 
     private void recordActiveReadingSession() {
         if (sessionStartMillis > 0 && book != null) {
-            long elapsedSecs = (System.currentTimeMillis() - sessionStartMillis) / 1000;
+            long elapsedSecs = (android.os.SystemClock.elapsedRealtime() - sessionStartMillis) / 1000;
             if (elapsedSecs >= 5) { // Count active reading sessions
                 boolean unlocked = ReadingStreak.addReadingTime(this, book.getTitle(), book.getAuthor(), (int) elapsedSecs);
                 if (unlocked) {
-                    Toast.makeText(this, "🎉 Daily 5-minute reading goal achieved! Day added to streak.", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "Daily 5-minute reading goal achieved! Day added to streak.", Toast.LENGTH_LONG).show();
                 }
             }
-            sessionStartMillis = System.currentTimeMillis();
+            sessionStartMillis = 0;
         }
     }
 
     private void updateReadingSessionSubtitle() {
         if (toolbarReader == null) return;
-        long elapsedSecs = sessionStartMillis > 0 ? (System.currentTimeMillis() - sessionStartMillis) / 1000 : 0;
+        long elapsedSecs = sessionStartMillis > 0
+                ? (android.os.SystemClock.elapsedRealtime() - sessionStartMillis) / 1000 : 0;
         int totalTodaySecs = ReadingStreak.getTodayReadingSeconds(this) + (int) elapsedSecs;
         int mins = Math.max(1, (int) Math.round(totalTodaySecs / 60.0));
         boolean goalMet = totalTodaySecs >= ReadingStreak.MIN_READING_TIME_SECONDS;
 
         if (goalMet) {
-            toolbarReader.setSubtitle("⏱️ " + mins + "m today • Goal Met 🔥");
+            toolbarReader.setSubtitle("" + mins + "m today • Goal Met");
         } else {
-            toolbarReader.setSubtitle("⏱️ " + mins + "m today • 5m goal");
+            toolbarReader.setSubtitle("" + mins + "m today • 5m goal");
         }
     }
 

@@ -21,25 +21,13 @@
         android:animateLayoutChanges="true">
 
         <!-- Hero Brand Section (~25-30% visual weight) -->
-        <com.google.android.material.card.MaterialCardView
+        <ImageView
             android:layout_width="140dp"
             android:layout_height="140dp"
             android:layout_marginBottom="18dp"
-            app:cardCornerRadius="28dp"
-            app:cardElevation="3dp"
-            app:strokeWidth="1dp"
-            app:strokeColor="#E2E8F0"
-            app:cardBackgroundColor="@android:color/white">
-
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="16dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/bookmate_logo"
-                android:contentDescription="Bookmate Logo" />
-
-        </com.google.android.material.card.MaterialCardView>
+            android:scaleType="fitCenter"
+            android:src="@drawable/bookmate_mark_clean"
+            android:contentDescription="BookMate logo" />
 
         <TextView
             android:layout_width="wrap_content"

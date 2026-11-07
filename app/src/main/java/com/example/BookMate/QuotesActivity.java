@@ -15,13 +15,15 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.CollectionReference;
+import com.google.firebase.firestore.DocumentSnapshot;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * ============================================================
  * QuotesActivity.java — Quotes & Notes
- * ============================================================
  * Week 8 : Explicit Intent to ReaderActivity (open a quote in its book).
  * Week 9 : RecyclerView with QuoteAdapter.
  * Week 11: Reads and deletes quotes in the SQLite "quotes" table.
@@ -31,35 +33,31 @@ import java.util.List;
  * - Tap a quote  → open its book at the quote (if the book is saved)
  * - Long-press   → Delete
  * - Quotes are included in the cloud Back up / Restore (MainActivity).
- * ============================================================
  */
 public class QuotesActivity extends AppCompatActivity implements QuoteAdapter.OnQuoteClickListener {
 
-    // ── UI References ─────────────────────────────────────────
+    // UI References
     private RecyclerView recyclerQuotes;
     private TextView tvQuotesEmpty;
 
-    // ── Data ──────────────────────────────────────────────────
+    // Data
     private QuoteAdapter adapter;
     private DatabaseHelper dbHelper;
-
-    // ═══════════════════════════════════════════════════════════
     // Lifecycle — Week 8
-    // ═══════════════════════════════════════════════════════════
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_quotes);
 
-        // ── Toolbar with back navigation ──────────────────────
+        // Toolbar with back navigation
         MaterialToolbar toolbar = findViewById(R.id.toolbarQuotes);
         toolbar.setNavigationOnClickListener(v -> finish());
 
-        // ── Initialize database helper (Week 11) ──────────────
+        // Initialize database helper (Week 11)
         dbHelper = new DatabaseHelper(this);
 
-        // ── Setup RecyclerView (Week 9) ───────────────────────
+        // Setup RecyclerView (Week 9)
         recyclerQuotes = findViewById(R.id.recyclerQuotes);
         tvQuotesEmpty = findViewById(R.id.tvQuotesEmpty);
         adapter = new QuoteAdapter(new ArrayList<>(), this);
@@ -67,7 +65,7 @@ public class QuotesActivity extends AppCompatActivity implements QuoteAdapter.On
         recyclerQuotes.setItemAnimator(new DefaultItemAnimator());
         recyclerQuotes.setAdapter(adapter);
 
-        // ── + button: add a quote or note by hand ─────────────
+        // + button: add a quote or note by hand
         // (empty text, no book yet; refresh the list after saving)
         FloatingActionButton fabAddQuote = findViewById(R.id.fabAddQuote);
         fabAddQuote.setOnClickListener(v ->
@@ -86,14 +84,14 @@ public class QuotesActivity extends AppCompatActivity implements QuoteAdapter.On
     }
 
     private void restoreAccountQuotes() {
-        com.google.firebase.firestore.CollectionReference ref = QuoteCloud.collection();
-        com.google.firebase.auth.FirebaseUser user = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        CollectionReference ref = QuoteCloud.collection();
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (ref == null || user == null) return;
         String uid = user.getUid();
         ref.get().addOnSuccessListener(snapshot -> {
-            com.google.firebase.auth.FirebaseUser current = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+            FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
             if (isFinishing() || isDestroyed() || current == null || !uid.equals(current.getUid())) return;
-            for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
+            for (DocumentSnapshot doc : snapshot.getDocuments()) {
                 String text = doc.getString("text");
                 Long created = doc.getLong("createdAt");
                 if (text == null || created == null) continue;
@@ -106,20 +104,14 @@ public class QuotesActivity extends AppCompatActivity implements QuoteAdapter.On
                     "Account quotes could not sync. Check your connection and reopen Quotes.", Toast.LENGTH_LONG).show();
         });
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Load Quotes from SQLite — Week 11
-    // ═══════════════════════════════════════════════════════════
 
     private void loadQuotes() {
         List<Quote> quotes = dbHelper.getAllQuotes();
         adapter.updateQuotes(quotes);
         tvQuotesEmpty.setVisibility(quotes.isEmpty() ? View.VISIBLE : View.GONE);
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Item Click — Week 8: Explicit Intent (open in book)
-    // ═══════════════════════════════════════════════════════════
 
     @Override
     public void onQuoteClick(Quote quote) {
@@ -132,7 +124,7 @@ public class QuotesActivity extends AppCompatActivity implements QuoteAdapter.On
         openInBook(quote, book);
     }
 
-    // ── Long-press → Delete (Week 11: SQLite Delete) ──────────
+    // Long-press → Delete (Week 11: SQLite Delete)
     @Override
     public void onQuoteLongClick(Quote quote) {
         // Ask for confirmation before deleting
@@ -140,10 +132,10 @@ public class QuotesActivity extends AppCompatActivity implements QuoteAdapter.On
                 .setTitle("Delete quote?")
                 .setMessage("This quote and its note will be removed.")
                 .setPositiveButton("Delete", (dialog, which) -> {
-                    com.google.firebase.firestore.CollectionReference ref = QuoteCloud.collection();
+                    CollectionReference ref = QuoteCloud.collection();
                     if (ref != null) {
                         ref.whereEqualTo("text", quote.getText()).get().addOnSuccessListener(snapshot -> {
-                            for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
+                            for (DocumentSnapshot doc : snapshot.getDocuments()) {
                                 Long created = doc.getLong("createdAt");
                                 if (created != null && created == quote.getCreatedAt()) doc.getReference().delete();
                             }

@@ -18,13 +18,17 @@ final class QuoteCloud {
     static void save(Quote quote, Runnable success, Runnable failure) {
         CollectionReference ref = collection();
         if (ref == null) { failure.run(); return; }
+        ref.document().set(toMap(quote)).addOnSuccessListener(unused -> success.run())
+                .addOnFailureListener(error -> failure.run());
+    }
+
+    static Map<String, Object> toMap(Quote quote) {
         Map<String, Object> data = new HashMap<>();
         data.put("text", quote.getText());
         data.put("note", quote.getNote());
         data.put("bookTitle", quote.getBookTitle());
         data.put("bookAuthor", quote.getBookAuthor());
         data.put("createdAt", quote.getCreatedAt());
-        ref.document().set(data).addOnSuccessListener(unused -> success.run())
-                .addOnFailureListener(error -> failure.run());
+        return data;
     }
 }

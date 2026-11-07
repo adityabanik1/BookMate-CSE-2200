@@ -7,15 +7,11 @@ import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
-import android.net.NetworkRequest;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 
 /**
- * ============================================================
  * NetworkMonitor.java — Dynamic Network & WiFi State Monitor
- * ============================================================
  * Week 10 & 11: Detects device connectivity transitions (WiFi / Cellular).
  *
  * Implements:
@@ -24,7 +20,6 @@ import android.os.Looper;
  *    - "android.net.wifi.WIFI_STATE_CHANGED"
  * 2) Modern ConnectivityManager.NetworkCallback (API 24+) for instant,
  *    battery-efficient reactive callbacks.
- * ============================================================
  */
 public class NetworkMonitor {
 
@@ -40,6 +35,7 @@ public class NetworkMonitor {
     private ConnectivityManager.NetworkCallback networkCallback;
     private boolean isRegistered = false;
     private Boolean lastReportedState = null;
+    private int registrationGeneration;
 
     public NetworkMonitor(Context context, NetworkChangeListener listener) {
         this.context = context.getApplicationContext();
@@ -55,22 +51,16 @@ public class NetworkMonitor {
             ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
             if (cm == null) return false;
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                Network activeNet = cm.getActiveNetwork();
-                if (activeNet == null) return false;
-                NetworkCapabilities caps = cm.getNetworkCapabilities(activeNet);
-                if (caps == null) return false;
-                return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-                        && (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-                        || caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
-                        || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET));
-            } else {
-                android.net.NetworkInfo info = cm.getActiveNetworkInfo();
-                return info != null && info.isConnected();
-            }
+            Network activeNet = cm.getActiveNetwork();
+            return activeNet != null && hasInternet(cm.getNetworkCapabilities(activeNet));
         } catch (Exception ignored) {
             return false;
         }
+    }
+
+    private static boolean hasInternet(NetworkCapabilities caps) {
+        return caps != null && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
     }
 
     /**
@@ -79,15 +69,17 @@ public class NetworkMonitor {
     public synchronized void start() {
         if (isRegistered) return;
         isRegistered = true;
+        final int generation = ++registrationGeneration;
+        lastReportedState = null;
 
         // Immediate initial check
-        notifyState(isOnline(context));
+        notifyState(isOnline(context), generation);
 
         // 1. Dynamic BroadcastReceiver (Lab 10 requirement)
         broadcastReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context ctx, Intent intent) {
-                notifyState(isOnline(ctx));
+                notifyState(isOnline(ctx), generation);
             }
         };
 
@@ -100,16 +92,16 @@ public class NetworkMonitor {
         // 2. Modern ConnectivityManager NetworkCallback (API 24+)
         try {
             ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-            if (cm != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            if (cm != null) {
                 networkCallback = new ConnectivityManager.NetworkCallback() {
                     @Override
-                    public void onAvailable(Network network) {
-                        mainHandler.post(() -> notifyState(true));
+                    public void onCapabilitiesChanged(Network network, NetworkCapabilities capabilities) {
+                        notifyState(hasInternet(capabilities), generation);
                     }
 
                     @Override
                     public void onLost(Network network) {
-                        mainHandler.post(() -> notifyState(isOnline(context)));
+                        mainHandler.post(() -> notifyState(isOnline(context), generation));
                     }
                 };
                 cm.registerDefaultNetworkCallback(networkCallback);
@@ -124,6 +116,8 @@ public class NetworkMonitor {
     public synchronized void stop() {
         if (!isRegistered) return;
         isRegistered = false;
+        registrationGeneration++;
+        mainHandler.removeCallbacksAndMessages(null);
 
         if (broadcastReceiver != null) {
             try {
@@ -145,12 +139,11 @@ public class NetworkMonitor {
         }
     }
 
-    private void notifyState(boolean online) {
-        if (lastReportedState != null && lastReportedState == online) {
-            return;
-        }
-        lastReportedState = online;
+    private void notifyState(boolean online, int generation) {
         mainHandler.post(() -> {
+            if (!isRegistered || generation != registrationGeneration) return;
+            if (lastReportedState != null && lastReportedState == online) return;
+            lastReportedState = online;
             if (listener != null) {
                 listener.onNetworkChanged(online);
             }

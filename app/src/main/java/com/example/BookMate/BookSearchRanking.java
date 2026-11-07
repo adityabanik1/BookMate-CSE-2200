@@ -16,28 +16,39 @@ final class BookSearchRanking {
             unique.putIfAbsent(key, book);
         }
         List<Book> ranked = new ArrayList<>(unique.values());
-        ranked.sort((a, b) -> {
-            int score = Integer.compare(score(query, b), score(query, a));
-            if (score != 0) return score;
-            int title = normalize(a.getTitle()).compareTo(normalize(b.getTitle()));
-            return title != 0 ? title : normalize(a.getAuthor()).compareTo(normalize(b.getAuthor()));
+        ranked.sort((first, second) -> {
+            // Higher scores come first. Equal scores use alphabetical title, then author.
+            int scoreOrder = Integer.compare(score(query, second), score(query, first));
+            if (scoreOrder != 0) return scoreOrder;
+            int titleOrder = normalize(first.getTitle()).compareTo(normalize(second.getTitle()));
+            if (titleOrder != 0) return titleOrder;
+            return normalize(first.getAuthor()).compareTo(normalize(second.getAuthor()));
         });
         return ranked;
     }
 
     private static int score(String query, Book book) {
-        String q = normalize(query), title = normalize(book.getTitle()), author = normalize(book.getAuthor());
+        String q = normalize(query);
+        String title = normalize(book.getTitle());
+        String author = normalize(book.getAuthor());
         if (q.isEmpty()) return 0;
-        int score = title.equals(q) ? 10000 : 0;
+        int score = 0;
+        if (title.equals(q)) score += 10000;
         if ((" " + title + " ").contains(" " + q + " ")) score += 4000;
         if (author.equals(q)) score += 8000;
         if ((" " + author + " ").contains(" " + q + " ")) score += 3000;
-        int matched = 0, total = 0;
+        int matched = 0;
+        int total = 0;
         for (String token : q.split(" ")) {
             if (token.equals("the") || token.equals("of") || token.equals("a") || token.equals("an")) continue;
             total++;
-            if ((" " + title + " ").contains(" " + token + " ")) { score += 200; matched++; }
-            else if ((" " + author + " ").contains(" " + token + " ")) { score += 150; matched++; }
+            if ((" " + title + " ").contains(" " + token + " ")) {
+                score += 200;
+                matched++;
+            } else if ((" " + author + " ").contains(" " + token + " ")) {
+                score += 150;
+                matched++;
+            }
         }
         if (total > 0 && matched == total) score += 1500;
         return score;

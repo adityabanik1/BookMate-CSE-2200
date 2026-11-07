@@ -27,7 +27,6 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.switchmaterial.SwitchMaterial;
@@ -39,14 +38,11 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * ============================================================
  * MainActivity.java — Home Screen (Offline Reading List)
- * ============================================================
  * Week 8 : Activity lifecycle (onCreate, onResume logged).
  *          Explicit Intent to open SearchActivity and
  *          BookDetailActivity.
@@ -64,7 +60,6 @@ import java.util.Map;
  *          users/{uid}/quotes) and Community
  *          picks (Realtime Database). SQLite stays the main storage;
  *          Firestore only holds a backup copy.
- * ============================================================
  */
 public class MainActivity extends AppCompatActivity implements BookAdapter.OnBookClickListener {
 
@@ -75,16 +70,15 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     private static final int REQUEST_PERMISSION_SWITCH = 101;  // reminder switch → schedule daily
     private static final int REQUEST_PERMISSION_TEST = 102;    // Test button → schedule test
 
-    // ── UI References ─────────────────────────────────────────
+    // UI References
     private RecyclerView recyclerBooks;
     private View layoutEmptyState;
     private TextView tvStats, tvStreakValue, tvFinishedValue;
     private MaterialButtonToggleGroup toggleGroupFilter;
-    private MaterialButton btnFilterAll, btnFilterWantToRead, btnFilterFinished;
     private SwitchMaterial switchReminder;
     private FloatingActionButton fabSearch;
 
-    // ── Soothing Offline Indicator Views (Week 10: Dynamic BroadcastReceiver) ──
+    // Soothing Offline Indicator Views (Week 10: Dynamic BroadcastReceiver)
     private View layoutToolbarOfflineBadge;
     private View dotToolbarRedMark;
     private TextView tvToolbarOfflineStatus;
@@ -92,23 +86,21 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     private View dotBannerRedMark;
     private NetworkMonitor networkMonitor;
     private ObjectAnimator redMarkAnimator;
+    private ObjectAnimator bannerRedMarkAnimator;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Runnable hideOnlineBadgeRunnable = this::hideOnlineBadge;
 
-    // ── Data ──────────────────────────────────────────────────
+    // Data
     private BookAdapter adapter;
     private List<Book> bookList;
     private DatabaseHelper dbHelper;
     private String currentFilter = null; // null = All
     private SharedPreferences prefs;
-
-    // ═══════════════════════════════════════════════════════════
     // Lifecycle — Week 8
-    // ═══════════════════════════════════════════════════════════
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        Log.d(TAG, "onCreate: MainActivity created");
 
         // Restore active filter on auto-rotation
         if (savedInstanceState != null) {
@@ -142,11 +134,11 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
             return true;
         });
 
-        // ── Initialize database helper (Week 11) ──────────────
+        // Initialize database helper (Week 11)
         dbHelper = new DatabaseHelper(this);
         dbHelper.seedInitialBooksIfEmpty(); // Ensures completed section has completed classics
 
-        // ── Initialize UI references ──────────────────────────
+        // Initialize UI references
         recyclerBooks = findViewById(R.id.recyclerBooks);
         layoutEmptyState = findViewById(R.id.layoutEmptyState);
         tvStats = findViewById(R.id.tvStats);
@@ -168,13 +160,10 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         }
 
         toggleGroupFilter = findViewById(R.id.toggleGroupFilter);
-        btnFilterAll = findViewById(R.id.btnFilterAll);
-        btnFilterWantToRead = findViewById(R.id.btnFilterWantToRead);
-        btnFilterFinished = findViewById(R.id.btnFilterFinished);
         switchReminder = findViewById(R.id.switchReminder);
         fabSearch = findViewById(R.id.fabSearch);
 
-        // ── Offline indicator references & dynamic monitor (Week 10) ──
+        // Offline indicator references & dynamic monitor (Week 10)
         layoutToolbarOfflineBadge = findViewById(R.id.layoutToolbarOfflineBadge);
         dotToolbarRedMark = findViewById(R.id.dotToolbarRedMark);
         tvToolbarOfflineStatus = findViewById(R.id.tvToolbarOfflineStatus);
@@ -189,14 +178,14 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
                     startActivity(new Intent(MainActivity.this, SearchActivity.class))));
         }
 
-        // ── Setup RecyclerView (Week 9) ───────────────────────
+        // Setup RecyclerView (Week 9)
         bookList = new ArrayList<>();
         adapter = new BookAdapter(bookList, this);
         recyclerBooks.setLayoutManager(new LinearLayoutManager(this));
         recyclerBooks.setAdapter(adapter);
         recyclerBooks.setItemAnimator(new DefaultItemAnimator());
 
-        // ── Filter buttons (Week 9) ──────────────────────────
+        // Filter buttons (Week 9)
         toggleGroupFilter.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked) return;
             group.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
@@ -214,18 +203,18 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
 
 
 
-        // ── FAB → SearchActivity (Week 8: Explicit Intent) ───
+        // FAB → SearchActivity (Week 8: Explicit Intent)
         fabSearch.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             Intent intent = new Intent(MainActivity.this, SearchActivity.class);
             startActivity(intent);
         }));
 
-        // ── Restore saved reminder switch state (SharedPreferences) ──
+        // Restore saved reminder switch state (SharedPreferences)
         // Done BEFORE attaching the listener so it doesn't re-trigger the alarm.
         prefs = getSharedPreferences("bookmate_prefs", MODE_PRIVATE);
         switchReminder.setChecked(prefs.getBoolean("reminder_on", false));
 
-        // ── Daily Reminder toggle (Week 10) ──────────────────
+        // Daily Reminder toggle (Week 10)
         switchReminder.setOnCheckedChangeListener((buttonView, isChecked) -> {
             buttonView.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
             prefs.edit().putBoolean("reminder_on", isChecked).apply();
@@ -264,6 +253,8 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
             networkMonitor.stop();
         }
         stopRedMarkPulse();
+        mainHandler.removeCallbacks(hideOnlineBadgeRunnable);
+        if (layoutToolbarOfflineBadge != null) layoutToolbarOfflineBadge.animate().cancel();
     }
 
     @Override
@@ -273,19 +264,23 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     }
 
     /**
-     * Updates the soothing "Offline" indicator with red mark when WiFi / cellular is off.
+     * Updates the soothing "On device" indicator with red mark when WiFi / cellular is off.
      * (Week 10: Dynamic system broadcast response)
      */
     private void updateNetworkState(boolean isOnline) {
         if (layoutToolbarOfflineBadge == null) return;
+        mainHandler.removeCallbacks(hideOnlineBadgeRunnable);
+        layoutToolbarOfflineBadge.animate().cancel();
+        layoutToolbarOfflineBadge.setAlpha(1f);
+        stopRedMarkPulse();
 
         if (!isOnline) {
-            // Signal "Offline" with a red mark — soothing vibe
+            // Signal "On device" with a red mark — soothing vibe
             layoutToolbarOfflineBadge.setVisibility(View.VISIBLE);
             layoutToolbarOfflineBadge.setBackgroundResource(R.drawable.bg_toolbar_offline_pill);
             dotToolbarRedMark.setBackgroundResource(R.drawable.bg_red_dot);
-            tvToolbarOfflineStatus.setText("Offline");
-            tvToolbarOfflineStatus.setTextColor(Color.parseColor("#FEE2E2"));
+            tvToolbarOfflineStatus.setText("On device");
+            tvToolbarOfflineStatus.setTextColor(Color.parseColor("#FDE7BC"));
             startRedMarkPulse(dotToolbarRedMark);
 
             if (layoutOfflineBanner != null) {
@@ -302,38 +297,46 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
             dotToolbarRedMark.setAlpha(1.0f);
             dotToolbarRedMark.setBackgroundResource(R.drawable.bg_green_dot);
             layoutToolbarOfflineBadge.setBackgroundResource(R.drawable.bg_toolbar_online_pill);
-            tvToolbarOfflineStatus.setText("Online");
-            tvToolbarOfflineStatus.setTextColor(Color.parseColor("#D1FAE5"));
+            tvToolbarOfflineStatus.setText("Connected");
+            tvToolbarOfflineStatus.setTextColor(Color.parseColor("#D8F3EC"));
 
             // After 2.5 seconds of reassurance, gently hide the badge
-            mainHandler.postDelayed(() -> {
-                if (NetworkMonitor.isOnline(MainActivity.this)) {
-                    layoutToolbarOfflineBadge.animate()
-                            .alpha(0f)
-                            .setDuration(400)
-                            .withEndAction(() -> {
-                                layoutToolbarOfflineBadge.setVisibility(View.GONE);
-                                layoutToolbarOfflineBadge.setAlpha(1f);
-                            })
-                            .start();
-                }
-            }, 2500);
+            mainHandler.postDelayed(hideOnlineBadgeRunnable, 2500);
         }
+    }
+
+    private void hideOnlineBadge() {
+        if (isFinishing() || isDestroyed() || !NetworkMonitor.isOnline(this)) return;
+        layoutToolbarOfflineBadge.animate().alpha(0f).setDuration(400)
+                .withEndAction(() -> {
+                    if (NetworkMonitor.isOnline(this)) layoutToolbarOfflineBadge.setVisibility(View.GONE);
+                    layoutToolbarOfflineBadge.setAlpha(1f);
+                }).start();
     }
 
     private void startRedMarkPulse(View dot) {
         if (dot == null) return;
-        if (redMarkAnimator != null) redMarkAnimator.cancel();
-        redMarkAnimator = ObjectAnimator.ofFloat(dot, "alpha", 1.0f, 0.35f, 1.0f);
-        redMarkAnimator.setDuration(1500);
-        redMarkAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        redMarkAnimator.start();
+        ObjectAnimator pulse = ObjectAnimator.ofFloat(dot, "alpha", 1.0f, 0.35f, 1.0f);
+        pulse.setDuration(300);
+        pulse.setRepeatCount(0);
+        if (dot == dotToolbarRedMark) {
+            if (redMarkAnimator != null) redMarkAnimator.cancel();
+            redMarkAnimator = pulse;
+        } else {
+            if (bannerRedMarkAnimator != null) bannerRedMarkAnimator.cancel();
+            bannerRedMarkAnimator = pulse;
+        }
+        pulse.start();
     }
 
     private void stopRedMarkPulse() {
         if (redMarkAnimator != null) {
             redMarkAnimator.cancel();
             redMarkAnimator = null;
+        }
+        if (bannerRedMarkAnimator != null) {
+            bannerRedMarkAnimator.cancel();
+            bannerRedMarkAnimator = null;
         }
         if (dotToolbarRedMark != null) dotToolbarRedMark.setAlpha(1.0f);
         if (dotBannerRedMark != null) dotBannerRedMark.setAlpha(1.0f);
@@ -347,13 +350,9 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     @Override
     protected void onResume() {
         super.onResume();
-        Log.d(TAG, "onResume: Refreshing book list");
         loadBooks();
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Load Books from SQLite — Week 11
-    // ═══════════════════════════════════════════════════════════
 
     private void loadBooks() {
         bookList = dbHelper.getBooksByStatus(currentFilter);
@@ -403,9 +402,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         View dialogView = getLayoutInflater().inflate(R.layout.dialog_streak_history, null);
         builder.setView(dialogView);
         AlertDialog dialog = builder.create();
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
-        }
+
 
         TextView tvTitle = dialogView.findViewById(R.id.tvStreakDialogTitle);
         TextView tvTodayStatus = dialogView.findViewById(R.id.tvTodayStreakStatus);
@@ -414,7 +411,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
 
         int streak = ReadingStreak.getStreak(this);
         if (tvTitle != null) {
-            tvTitle.setText(streak + "-Day Reading Streak 🔥");
+            tvTitle.setText(streak + "-day streak");
         }
 
         int todaySecs = ReadingStreak.getTodayReadingSeconds(this);
@@ -423,10 +420,10 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
 
         if (tvTodayStatus != null) {
             if (todayMet) {
-                tvTodayStatus.setText("Today: " + todayMins + " mins read • Goal Met ✓ (5m+)");
+                tvTodayStatus.setText("Today · " + todayMins + " min · Goal reached");
             } else {
                 int remainingMins = Math.max(1, (int) Math.ceil((ReadingStreak.MIN_READING_TIME_SECONDS - todaySecs) / 60.0));
-                tvTodayStatus.setText("Today: " + todayMins + " mins • " + remainingMins + "m to reach 5m goal");
+                tvTodayStatus.setText("Today · " + todayMins + " min · " + remainingMins + " min to goal");
             }
         }
 
@@ -448,10 +445,10 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
 
                 if (tvBadge != null) {
                     if (log.isGoalMet()) {
-                        tvBadge.setText("✓ 5m+ Goal");
+                        tvBadge.setText("Goal reached");
                         tvBadge.setTextColor(Color.parseColor("#15803D"));
                     } else {
-                        tvBadge.setText("In Progress");
+                        tvBadge.setText("In progress");
                         tvBadge.setTextColor(Color.parseColor("#B45309"));
                     }
                 }
@@ -465,6 +462,9 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         }
 
         dialog.show();
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawableResource(android.R.color.transparent);
+        }
     }
 
     /**
@@ -477,10 +477,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
             toggleGroupFilter.check(targetId);
         }
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Item Click — Week 8: Explicit Intent to BookDetailActivity
-    // ═══════════════════════════════════════════════════════════
 
     @Override
     public void onBookClick(Book book) {
@@ -488,11 +485,8 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         intent.putExtra("book", book); // Book implements Serializable
         startActivity(intent);
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Daily Reminder — Week 10: AlarmManager + BroadcastReceiver
     // (alarm code lives in ReminderScheduler)
-    // ═══════════════════════════════════════════════════════════
 
     /**
      * Schedules the daily 9:00 AM reminder.
@@ -521,10 +515,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         // Start BookService to log this action (Week 10: Service)
         startBookService("TEST_REMINDER");
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Firebase Authentication — Logout
-    // ═══════════════════════════════════════════════════════════
 
     private void logout() {
         FirebaseAuth.getInstance().signOut();
@@ -539,10 +530,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         startActivity(intent);
         finish();
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Cloud Backup — Firebase Firestore (users/{uid}/books + quotes)
-    // ═══════════════════════════════════════════════════════════
 
     /**
      * Returns the Firestore collection users/{uid}/{name} ("books" or
@@ -572,11 +560,11 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         // Turn every Book and Quote into a Map (one Firestore document each)
         List<Map<String, Object>> bookDocs = new ArrayList<>();
         for (Book book : books) {
-            bookDocs.add(bookToMap(book));
+            bookDocs.add(BookCloudData.toMap(book));
         }
         List<Map<String, Object>> quoteDocs = new ArrayList<>();
         for (Quote quote : quotes) {
-            quoteDocs.add(quoteToMap(quote));
+            quoteDocs.add(QuoteCloud.toMap(quote));
         }
 
         Toast.makeText(this, "Backing up...", Toast.LENGTH_SHORT).show();
@@ -594,8 +582,15 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     private void replaceCloudCollection(String name, List<Map<String, Object>> docs) {
         CollectionReference ref = getCloudCollection(name);
         if (ref == null) return;
+        String uid = ref.getParent().getId();
 
         ref.get().addOnSuccessListener(oldBackup -> {
+            if (!isCurrentCloudUser(uid)) return;
+            if (oldBackup.size() + docs.size() > 500) {
+                Toast.makeText(this, "This backup is too large for one atomic update. "
+                        + "Your existing cloud backup has been kept.", Toast.LENGTH_LONG).show();
+                return;
+            }
             WriteBatch batch = FirebaseFirestore.getInstance().batch();
             for (DocumentSnapshot doc : oldBackup.getDocuments()) {
                 batch.delete(doc.getReference());   // remove the old copy
@@ -631,11 +626,13 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         CollectionReference booksRef = getCloudCollection("books");
         CollectionReference quotesRef = getCloudCollection("quotes");
         if (booksRef == null || quotesRef == null) return;
+        String uid = booksRef.getParent().getId();
 
         // 1. Books
         booksRef.get().addOnSuccessListener(snapshot -> {
+            if (!isCurrentCloudUser(uid)) return;
             for (DocumentSnapshot doc : snapshot.getDocuments()) {
-                dbHelper.addOrUpdateBook(mapToBook(doc));
+                dbHelper.addOrUpdateBook(BookCloudData.fromMap(doc.getData()));
             }
             Toast.makeText(this, "Restored " + snapshot.size() + " books", Toast.LENGTH_SHORT).show();
             loadBooks(); // refresh the list
@@ -643,6 +640,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
 
         // 2. Quotes
         quotesRef.get().addOnSuccessListener(snapshot -> {
+            if (!isCurrentCloudUser(uid)) return;
             int added = 0;
             for (DocumentSnapshot doc : snapshot.getDocuments()) {
                 if (dbHelper.addQuoteIfNew(mapToQuote(doc))) {
@@ -653,42 +651,9 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         }).addOnFailureListener(this::showCloudError);
     }
 
-    /** Converts a Book into a Map so Firestore can store it as a document. */
-    private Map<String, Object> bookToMap(Book book) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("title", book.getTitle());
-        map.put("author", book.getAuthor());
-        map.put("publishYear", book.getPublishYear());
-        map.put("publisher", book.getPublisher());
-        map.put("status", book.getStatus());
-        map.put("lastReadPosition", book.getLastReadPosition());
-        map.put("readUrl", book.getReadUrl());
-        return map;
-    }
-
-    /** Converts a Firestore document back into a Book (id -1 = not in SQLite yet). */
-    private Book mapToBook(DocumentSnapshot doc) {
-        Long position = doc.getLong("lastReadPosition"); // Firestore stores numbers as Long
-        return new Book(
-                -1,
-                doc.getString("title"),
-                doc.getString("author"),
-                doc.getString("publishYear"),
-                doc.getString("publisher"),
-                doc.getString("status"),
-                (position != null) ? position.intValue() : 0,
-                doc.getString("readUrl"));
-    }
-
-    /** Converts a Quote into a Map so Firestore can store it as a document. */
-    private Map<String, Object> quoteToMap(Quote quote) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("text", quote.getText());
-        map.put("note", quote.getNote());
-        map.put("bookTitle", quote.getBookTitle());
-        map.put("bookAuthor", quote.getBookAuthor());
-        map.put("createdAt", quote.getCreatedAt()); // kept, so Restore can spot duplicates
-        return map;
+    private boolean isCurrentCloudUser(String uid) {
+        FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
+        return !isFinishing() && !isDestroyed() && current != null && uid.equals(current.getUid());
     }
 
     /** Converts a Firestore document back into a Quote (id -1 = not in SQLite yet). */
@@ -707,10 +672,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         Log.w(TAG, "Firestore error", e);
         Toast.makeText(this, "Cloud error: " + e.getMessage(), Toast.LENGTH_LONG).show();
     }
-
-    // ═══════════════════════════════════════════════════════════
     // BookService — Week 10: Started Service
-    // ═══════════════════════════════════════════════════════════
 
     /**
      * Starts BookService with an action extra describing why it was triggered.
@@ -720,10 +682,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         serviceIntent.putExtra("action", action);
         startService(serviceIntent);
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Notification Permission — Android 13+ (API 33)
-    // ═══════════════════════════════════════════════════════════
 
     /**
      * Returns true if notification permission is already granted (or not

@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:background="@android:color/white"
+    android:background="@drawable/bg_streak_dialog"
     android:padding="20dp">
 
     <!-- Header: Flame Icon & Title -->
@@ -22,8 +22,8 @@
             app:cardCornerRadius="22dp"
             app:cardElevation="0dp"
             app:strokeWidth="1dp"
-            app:strokeColor="#FED7AA"
-            app:cardBackgroundColor="#FFF7ED"
+            app:strokeColor="#E4DCF1"
+            app:cardBackgroundColor="#F4F0FA"
             android:layout_marginEnd="12dp">
 
             <ImageView
@@ -31,7 +31,7 @@
                 android:layout_height="26dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_local_fire"
-                app:tint="#F97316"
+                app:tint="@color/brand_primary"
                 android:contentDescription="Fire Streak" />
 
         </com.google.android.material.card.MaterialCardView>
@@ -46,15 +46,15 @@
                 android:id="@+id/tvStreakDialogTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="2-Day Reading Streak 🔥"
+                android:text="Reading streak"
                 android:textColor="#1E293B"
-                android:textSize="18sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="5+ min reading required for a streak day"
+                android:text="A streak day starts with 5 minutes."
                 android:textColor="#64748B"
                 android:textSize="12sp" />
 
@@ -94,7 +94,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Today: 8 mins read • Goal Met ✓"
+                android:text="Today · 8 min · Goal reached"
                 android:textColor="#15803D"
                 android:textSize="13sp"
                 android:textStyle="bold" />
@@ -107,18 +107,18 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="RECENT READING DAYS"
+        android:text="Reading history"
         android:textColor="#94A3B8"
         android:textSize="11sp"
         android:textStyle="bold"
-        android:letterSpacing="0.05"
+        android:letterSpacing="0"
         android:layout_marginBottom="8dp" />
 
     <!-- History List Container -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxHeight="260dp">
+        android:layout_marginBottom="12dp">
 
         <LinearLayout
             android:id="@+id/layoutStreakHistoryList"
@@ -127,17 +127,6 @@
             android:orientation="vertical" />
 
     </ScrollView>
-
-    <!-- Motivational Tip -->
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
-        android:layout_marginBottom="16dp"
-        android:gravity="center"
-        android:text="📖 Reading at least 5 minutes daily builds lifelong habits!"
-        android:textColor="#64748B"
-        android:textSize="12sp" />
 
     <!-- Dismiss Button -->
     <com.google.android.material.button.MaterialButton

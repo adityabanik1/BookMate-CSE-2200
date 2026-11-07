@@ -3,9 +3,7 @@ package com.example.BookMate;
 import java.util.regex.Pattern;
 
 /**
- * ============================================================
  * BookTextFormatter.java — Gutenberg & Public Domain Text Cleaner
- * ============================================================
  * Formats raw plain-text ebooks (e.g. from Project Gutenberg, Internet Archive)
  * into clean, readable, fluid paragraphs for mobile displays:
  * 1. Strips [Illustration: ...] and [Transcriber's Note: ...] OCR/ASCII artifacts.
@@ -13,7 +11,6 @@ import java.util.regex.Pattern;
  *    smoothly to fit screen width with lineSpacingMultiplier.
  * 3. Preserves intentional paragraph breaks (\n\n), poetry stanzas, and indented quotes.
  * 4. Eliminates excessive blank lines and trailing carriage returns.
- * ============================================================
  */
 public final class BookTextFormatter {
 

@@ -155,7 +155,7 @@
 
             </LinearLayout>
 
-            <!-- ✨ AI BOOK SUMMARY CARD (Gemini 2.5) -->
+            <!-- AI BOOK SUMMARY CARD (Gemini 2.5) -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardAiSummary"
                 android:layout_width="match_parent"
@@ -203,15 +203,9 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginStart="8dp"
-                            android:paddingStart="8dp"
-                            android:paddingEnd="8dp"
-                            android:paddingTop="2dp"
-                            android:paddingBottom="2dp"
-                            android:text="Gemini Flash"
-                            android:textSize="10sp"
-                            android:textStyle="bold"
-                            android:textColor="@color/brand_primary"
-                            android:background="@drawable/bg_badge" />
+                            android:text="powered by Gemini"
+                            android:textSize="9sp"
+                            android:textColor="#64748B" />
 
                         <View
                             android:layout_width="0dp"
@@ -260,7 +254,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Generating summary with Gemini..."
+                            android:text="Preparing overview..."
                             android:textSize="13sp"
                             android:textColor="#64748B" />
 
@@ -316,10 +310,14 @@
                             android:id="@+id/btnClearAiChat"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:minWidth="48dp"
+                            android:minHeight="48dp"
+                            android:gravity="center"
+                            android:focusable="true"
                             android:text="Clear"
-                            android:textSize="11sp"
-                            android:textColor="#94A3B8"
-                            android:padding="4dp"
+                            android:textSize="13sp"
+                            android:textColor="#475569"
+                            android:padding="8dp"
                             android:visibility="gone"
                             android:background="?attr/selectableItemBackground" />
                     </LinearLayout>
@@ -339,9 +337,12 @@
 
                             <TextView
                                 android:id="@+id/chipGenre"
+                                android:minHeight="48dp"
+                                android:gravity="center"
+                                android:focusable="true"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="🎭 Genre?"
+                                android:text="Genre?"
                                 android:textSize="12sp"
                                 android:textColor="#475569"
                                 android:background="@drawable/bg_chat_chip"
@@ -353,9 +354,12 @@
 
                             <TextView
                                 android:id="@+id/chipPages"
+                                android:minHeight="48dp"
+                                android:gravity="center"
+                                android:focusable="true"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="📄 Page count?"
+                                android:text="Page count?"
                                 android:textSize="12sp"
                                 android:textColor="#475569"
                                 android:background="@drawable/bg_chat_chip"
@@ -367,9 +371,12 @@
 
                             <TextView
                                 android:id="@+id/chipCharacters"
+                                android:minHeight="48dp"
+                                android:gravity="center"
+                                android:focusable="true"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="👥 Main characters?"
+                                android:text="Main characters?"
                                 android:textSize="12sp"
                                 android:textColor="#475569"
                                 android:background="@drawable/bg_chat_chip"
@@ -381,9 +388,12 @@
 
                             <TextView
                                 android:id="@+id/chipPlot"
+                                android:minHeight="48dp"
+                                android:gravity="center"
+                                android:focusable="true"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="❓ What happens to..."
+                                android:text="What happens to..."
                                 android:textSize="12sp"
                                 android:textColor="#475569"
                                 android:background="@drawable/bg_chat_chip"
@@ -420,7 +430,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Gemini is thinking..."
+                            android:text="Preparing answer..."
                             android:textSize="12sp"
                             android:textColor="#64748B" />
                     </LinearLayout>
@@ -436,13 +446,14 @@
                         <EditText
                             android:id="@+id/etAiChatQuestion"
                             android:layout_width="0dp"
-                            android:layout_height="44dp"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
                             android:layout_weight="1"
                             android:background="@drawable/bg_search_bar"
                             android:hint="Ask genre, pages, characters..."
                             android:textSize="13sp"
                             android:textColor="#1E293B"
-                            android:textColorHint="#94A3B8"
+                            android:textColorHint="#64748B"
                             android:paddingStart="14dp"
                             android:paddingEnd="14dp"
                             android:imeOptions="actionSend"
@@ -451,8 +462,8 @@
 
                         <ImageButton
                             android:id="@+id/btnAiChatSend"
-                            android:layout_width="44dp"
-                            android:layout_height="44dp"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
                             android:layout_marginStart="8dp"
                             android:background="?attr/selectableItemBackgroundBorderless"
                             android:src="@drawable/ic_send"

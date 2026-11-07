@@ -7,12 +7,14 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Parcelable;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.HapticFeedbackConstants;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
@@ -32,11 +34,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
- * ============================================================
  * SearchActivity.java — Online Book Search Across Providers
- * ============================================================
  * Week 8 : Activity lifecycle, Explicit Intent to BookDetailActivity.
  * Week 9 : RecyclerView with BookAdapter for search results.
  * Week 11: Networking on a background thread using ExecutorService + Handler.
@@ -45,16 +46,14 @@ import java.util.concurrent.Executors;
  * - Project Gutenberg (70,000+ free public domain full-text classics)
  * - Open Library / Internet Archive (Global catalog & digital borrowing)
  * Week 11: XML parsing — featured classics from assets/featured_books.xml.
- * ============================================================
  */
 public class SearchActivity extends AppCompatActivity implements BookAdapter.OnBookClickListener {
 
-    // ── UI References ─────────────────────────────────────────
+    // UI References
     private EditText etSearchQuery;
     private ImageButton btnClearQuery;
     private MaterialButton btnSearch;
     private MaterialButtonToggleGroup toggleProvider;
-    private MaterialButton btnProviderAll, btnProviderGutenberg, btnProviderOpenLibrary;
     private ProgressBar progressBar;
     private RecyclerView recyclerSearchResults;
     private TextView tvSearchEmpty;
@@ -64,25 +63,28 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
     private NetworkMonitor networkMonitor;
     private ObjectAnimator redMarkAnimator;
 
-    // ── Data & Provider State ─────────────────────────────────
+    // Data & Provider State
     private BookAdapter adapter;
     private List<Book> searchResults;
     private String selectedProvider = NetworkUtils.PROVIDER_ALL;
 
-    // ── Threading (Week 11) ───────────────────────────────────
-    private final ExecutorService executor = Executors.newSingleThreadExecutor();
+    // Threading (Week 11)
+    private final ExecutorService executor = Executors.newFixedThreadPool(2);
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-
-    // ═══════════════════════════════════════════════════════════
+    private Future<?> pendingSearch;
+    private int searchGeneration;
+    private boolean searchInProgress;
+    private boolean showingFeatured = true;
+    private String submittedQuery = "";
+    private String submittedProvider = NetworkUtils.PROVIDER_ALL;
     // Lifecycle — Week 8
-    // ═══════════════════════════════════════════════════════════
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_search);
 
-        // ── Initialize UI ─────────────────────────────────────
+        // Initialize UI
         MaterialToolbar toolbar = findViewById(R.id.toolbarSearch);
         toolbar.setNavigationOnClickListener(v -> UiUtils.animateClick(v, this::finish));
 
@@ -90,9 +92,6 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         btnClearQuery = findViewById(R.id.btnClearQuery);
         btnSearch = findViewById(R.id.btnSearch);
         toggleProvider = findViewById(R.id.toggleProvider);
-        btnProviderAll = findViewById(R.id.btnProviderAll);
-        btnProviderGutenberg = findViewById(R.id.btnProviderGutenberg);
-        btnProviderOpenLibrary = findViewById(R.id.btnProviderOpenLibrary);
         progressBar = findViewById(R.id.progressBar);
         recyclerSearchResults = findViewById(R.id.recyclerSearchResults);
         tvSearchEmpty = findViewById(R.id.tvSearchEmpty);
@@ -102,8 +101,19 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
 
         networkMonitor = new NetworkMonitor(this, this::updateSearchNetworkState);
 
-        // ── Default provider selection ────────────────────────
-        btnProviderAll.setChecked(true);
+        // Default provider selection
+        if (savedInstanceState != null) {
+            selectedProvider = savedInstanceState.getString("search_provider", NetworkUtils.PROVIDER_ALL);
+        }
+        int providerId = R.id.btnProviderAll;
+        if (NetworkUtils.PROVIDER_AUDIO.equals(selectedProvider)) {
+            providerId = R.id.btnProviderAudio;
+        } else if (NetworkUtils.PROVIDER_GUTENBERG.equals(selectedProvider)) {
+            providerId = R.id.btnProviderGutenberg;
+        } else if (NetworkUtils.PROVIDER_OPEN_LIBRARY.equals(selectedProvider)) {
+            providerId = R.id.btnProviderOpenLibrary;
+        }
+        toggleProvider.check(providerId);
 
         toggleProvider.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked) return;
@@ -121,10 +131,12 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
             String query = etSearchQuery.getText().toString().trim();
             if (!query.isEmpty()) {
                 performSearch();
+            } else {
+                showFeaturedBooks();
             }
         });
 
-        // ── Setup RecyclerView with smooth animations ─────────
+        // Setup RecyclerView with smooth animations
         searchResults = new ArrayList<>();
         adapter = new BookAdapter(searchResults, this);
         recyclerSearchResults.setLayoutManager(new LinearLayoutManager(this));
@@ -134,7 +146,7 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         // ── Show featured classics before searching (Week 11: XML)
         showFeaturedBooks();
 
-        // ── Live type bar observer & quick-clear ──────────────
+        // Live type bar observer & quick-clear
         etSearchQuery.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -143,6 +155,7 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
             public void onTextChanged(CharSequence s, int start, int before, int count) {
                 String query = (s != null) ? s.toString().trim() : "";
                 btnClearQuery.setVisibility(query.isEmpty() ? View.GONE : View.VISIBLE);
+                if (query.isEmpty()) showFeaturedBooks();
             }
 
             @Override
@@ -152,41 +165,91 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         btnClearQuery.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             etSearchQuery.setText("");
             hideKeyboard();
-            showFeaturedBooks();
         }));
 
-        // ── Search button click ───────────────────────────────
+        // Search button click
         btnSearch.setOnClickListener(v -> UiUtils.animateClick(v, this::performSearch));
 
-        // ── Handle keyboard "Search" action ───────────────────
+        // Handle keyboard "Search" action
         etSearchQuery.setOnEditorActionListener((v, actionId, event) -> {
-            if (event == null || event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (actionId == EditorInfo.IME_ACTION_SEARCH
+                    || (event != null && event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+                    && event.getAction() == KeyEvent.ACTION_DOWN)) {
                 performSearch();
+                return true;
             }
-            return true;
+            return false;
         });
+        if (savedInstanceState != null) restoreSearchState(savedInstanceState);
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("search_provider", selectedProvider);
+        outState.putString("search_input", etSearchQuery.getText().toString());
+        outState.putString("search_submitted_query", submittedQuery);
+        outState.putString("search_submitted_provider", submittedProvider);
+        outState.putBoolean("search_loading", searchInProgress);
+        outState.putBoolean("search_featured", showingFeatured);
+        outState.putSerializable("search_results", new ArrayList<>(searchResults));
+        outState.putString("search_heading", tvSectionLabel.getText().toString());
+        outState.putString("search_empty_text", tvSearchEmpty.getText().toString());
+        outState.putInt("search_empty_visibility", tvSearchEmpty.getVisibility());
+        outState.putParcelable("search_scroll", recyclerSearchResults.getLayoutManager().onSaveInstanceState());
+    }
+
+    @SuppressWarnings("unchecked")
+    private void restoreSearchState(Bundle state) {
+        etSearchQuery.setText(state.getString("search_input", ""));
+        showingFeatured = state.getBoolean("search_featured", true);
+        submittedQuery = state.getString("search_submitted_query", "");
+        submittedProvider = state.getString("search_submitted_provider", selectedProvider);
+        if (state.getBoolean("search_loading")) {
+            // Restart the submitted request, preserving newer, unsubmitted input.
+            startSearch(submittedQuery, submittedProvider);
+            return;
+        }
+        ArrayList<Book> restored = (ArrayList<Book>) state.getSerializable("search_results");
+        if (restored != null) {
+            searchResults = restored;
+            adapter.setUnsavedLabel(showingFeatured ? "Featured" : "Online Result");
+            adapter.updateBooks(searchResults);
+        }
+        tvSectionLabel.setText(state.getString("search_heading", ""));
+        tvSectionLabel.setVisibility(tvSectionLabel.getText().length() == 0 ? View.GONE : View.VISIBLE);
+        tvSearchEmpty.setText(state.getString("search_empty_text", ""));
+        tvSearchEmpty.setVisibility(state.getInt("search_empty_visibility", View.GONE));
+        Parcelable scroll = state.getParcelable("search_scroll");
+        recyclerSearchResults.getLayoutManager().onRestoreInstanceState(scroll);
+    }
+
+    private void invalidateSearch() {
+        searchGeneration++;
+        if (pendingSearch != null) pendingSearch.cancel(true);
+        pendingSearch = null;
+        searchInProgress = false;
     }
 
     @Override
     protected void onDestroy() {
-        executor.shutdown();
+        invalidateSearch();
+        executor.shutdownNow();
+        mainHandler.removeCallbacksAndMessages(null);
         super.onDestroy();
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Featured Books — Week 11: XML Parsing
-    // ═══════════════════════════════════════════════════════════
 
     /**
      * Loads the featured classics from assets/featured_books.xml
      * and shows them in the list with a "Featured" badge.
      */
     private void showFeaturedBooks() {
+        invalidateSearch();
+        showingFeatured = true;
+        progressBar.setVisibility(View.GONE);
+        recyclerSearchResults.setVisibility(View.VISIBLE);
         List<Book> featured = FeaturedBooksParser.parse(this);
-        if (featured.isEmpty()) {
-            tvSectionLabel.setVisibility(View.GONE);
-            return;
-        }
 
         tvSectionLabel.setText("Featured Classics — Free to Read");
         tvSectionLabel.setVisibility(View.VISIBLE);
@@ -196,10 +259,7 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         adapter.setUnsavedLabel("Featured");
         adapter.updateBooks(searchResults);
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Network Search — Multi-Provider (Week 11)
-    // ═══════════════════════════════════════════════════════════
 
     /**
      * Launches a background thread to call book provider APIs,
@@ -213,18 +273,27 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         }
 
         hideKeyboard();
+        startSearch(query, selectedProvider);
+    }
 
+    private void startSearch(String query, String activeProvider) {
+        invalidateSearch();
+        final int generation = searchGeneration;
+        submittedQuery = query;
+        submittedProvider = activeProvider;
+        searchInProgress = true;
+        showingFeatured = false;
         progressBar.setVisibility(View.VISIBLE);
         tvSearchEmpty.setVisibility(View.GONE);
         recyclerSearchResults.setVisibility(View.GONE);
 
-        String activeProvider = selectedProvider;
-
-        executor.execute(() -> {
+        pendingSearch = executor.submit(() -> {
             List<Book> results = NetworkUtils.searchBooks(query, activeProvider);
 
             mainHandler.post(() -> {
-                if (isFinishing() || isDestroyed()) return;
+                if (generation != searchGeneration || isFinishing() || isDestroyed()) return;
+                searchInProgress = false;
+                pendingSearch = null;
 
                 progressBar.setVisibility(View.GONE);
                 recyclerSearchResults.setVisibility(View.VISIBLE);
@@ -267,10 +336,7 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
             });
         });
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Item Click — Week 8: Explicit Intent
-    // ═══════════════════════════════════════════════════════════
 
     @Override
     public void onBookClick(Book book) {
@@ -316,8 +382,8 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
             if (dotSearchRedMark != null) {
                 if (redMarkAnimator != null) redMarkAnimator.cancel();
                 redMarkAnimator = ObjectAnimator.ofFloat(dotSearchRedMark, "alpha", 1.0f, 0.35f, 1.0f);
-                redMarkAnimator.setDuration(1500);
-                redMarkAnimator.setRepeatCount(ValueAnimator.INFINITE);
+                redMarkAnimator.setDuration(300);
+                redMarkAnimator.setRepeatCount(0);
                 redMarkAnimator.start();
             }
         } else {

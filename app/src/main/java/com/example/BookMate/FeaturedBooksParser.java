@@ -11,9 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * ============================================================
  * FeaturedBooksParser.java — XML Parser (XmlPullParser)
- * ============================================================
  * Week 11: Reads assets/featured_books.xml and turns each
  *          <book> element into a Book object.
  *
@@ -26,7 +24,6 @@ import java.util.List;
  *   </book>
  *
  * The file is tiny, so it is fine to parse on the main thread.
- * ============================================================
  */
 public class FeaturedBooksParser {
 
@@ -100,7 +97,6 @@ public class FeaturedBooksParser {
             Log.e(TAG, "parse: Could not read " + FILE_NAME, e);
         }
 
-        Log.d(TAG, "parse: Loaded " + books.size() + " featured books");
         return books;
     }
 }

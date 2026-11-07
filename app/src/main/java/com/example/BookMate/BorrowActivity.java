@@ -353,40 +353,18 @@ public class BorrowActivity extends AppCompatActivity {
 
             @Override public void onReceivedError(WebView view, WebResourceRequest request,
                                                    WebResourceError error) {
-                if (request.isForMainFrame()) {
-                    pageFailed = true;
-                    navigating = false;
-                    timers.removeCallbacks(pageDeadline);
-                    loading.setVisibility(View.GONE);
-                    if (!sent) reset();
-                    status.setText(R.string.loan_page_error);
-                    updateControls();
-                }
+                if (request.isForMainFrame()) showPageError();
             }
 
             @Override public void onReceivedHttpError(WebView view, WebResourceRequest request,
                                                        android.webkit.WebResourceResponse response) {
-                if (request.isForMainFrame()) {
-                    pageFailed = true;
-                    navigating = false;
-                    timers.removeCallbacks(pageDeadline);
-                    loading.setVisibility(View.GONE);
-                    if (!sent) reset();
-                    status.setText(R.string.loan_page_error);
-                    updateControls();
-                }
+                if (request.isForMainFrame()) showPageError();
             }
 
             @Override public void onReceivedSslError(WebView view, android.webkit.SslErrorHandler handler,
                                                      android.net.http.SslError error) {
                 handler.cancel();
-                pageFailed = true;
-                navigating = false;
-                timers.removeCallbacks(pageDeadline);
-                loading.setVisibility(View.GONE);
-                if (!sent) reset();
-                status.setText(R.string.loan_page_error);
-                updateControls();
+                showPageError();
             }
 
             @Override public void onPageCommitVisible(WebView view, String url) {
@@ -399,6 +377,16 @@ public class BorrowActivity extends AppCompatActivity {
         });
         web.setDownloadListener((url, agent, disposition, mime, length) ->
                 status.setText(R.string.loan_download_notice));
+    }
+
+    private void showPageError() {
+        pageFailed = true;
+        navigating = false;
+        timers.removeCallbacks(pageDeadline);
+        loading.setVisibility(View.GONE);
+        if (!sent) reset();
+        status.setText(R.string.loan_page_error);
+        updateControls();
     }
 
     private void showGoogleSignInHelp() {
@@ -428,7 +416,7 @@ public class BorrowActivity extends AppCompatActivity {
         timers.removeCallbacks(pageDeadline);
         loading.setVisibility(View.GONE);
         if (pageFailed) { updateControls(); return; }
-        if (isLoginPage(url)) {
+        if (LoanTarget.isSignInPage(url)) {
             status.setText(R.string.loan_sign_in);
         } else if (pending != Action.NONE && !checkedThisPage && !checking) {
             checkedThisPage = true;
@@ -448,10 +436,6 @@ public class BorrowActivity extends AppCompatActivity {
         web.setVisibility(View.VISIBLE);
         updateControls();
         web.loadUrl(url);
-    }
-
-    private boolean isLoginPage(String url) {
-        return LoanTarget.isSignInPage(url);
     }
 
     private void verify() {
@@ -505,7 +489,7 @@ public class BorrowActivity extends AppCompatActivity {
         }
         if (result == LoanService.State.SIGN_IN_REQUIRED) {
             status.setText(R.string.loan_sign_in);
-            if (!isLoginPage(web.getUrl())) loadProviderPage(LoanService.LOGIN_URL);
+            if (!LoanTarget.isSignInPage(web.getUrl())) loadProviderPage(LoanService.LOGIN_URL);
             return;
         }
         if (pending == Action.CONNECT) {

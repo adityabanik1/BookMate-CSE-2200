@@ -10,9 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * ============================================================
  * DatabaseHelper.java — SQLite CRUD Helper
- * ============================================================
  * Week 11: Offline storage using SQLiteOpenHelper.
  *
  * Database : bookmate.db (Version 3)
@@ -23,7 +21,6 @@ import java.util.List;
  * Table    : quotes (added in Version 3 — Quotes & Notes)
  * Columns  : id (PK, AUTO), quote_text, note, book_title,
  *            book_author, created_at (INTEGER, millis)
- * ============================================================
  */
 public class DatabaseHelper extends SQLiteOpenHelper {
 
@@ -118,7 +115,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put("format_label", book.getFormatLabel());
 
         // Check if book already exists (same title AND same author)
-        Cursor cursor = db.query(TABLE_BOOKS, new String[]{COL_ID},
+        Cursor cursor = db.query(TABLE_BOOKS, new String[]{COL_ID, COL_READ_URL},
                 COL_TITLE + " = ? AND " + COL_AUTHOR + " = ?",
                 new String[]{book.getTitle(), book.getAuthor()},
                 null, null, null);
@@ -127,6 +124,12 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         if (cursor != null && cursor.moveToFirst()) {
             // Book exists → update it
             int existingId = cursor.getInt(cursor.getColumnIndexOrThrow(COL_ID));
+            String existingUrl = cursor.getString(cursor.getColumnIndexOrThrow(COL_READ_URL));
+            if ("Formats unverified".equals(book.getFormatLabel())
+                    && java.util.Objects.equals(existingUrl, book.getReadUrl())) {
+                // Older backups have no format field; keep verified metadata for the same edition.
+                values.remove("format_label");
+            }
             result = db.update(TABLE_BOOKS, values,
                     COL_ID + " = ?", new String[]{String.valueOf(existingId)});
             book.setId(existingId);
@@ -265,7 +268,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     }
 
     /**
-     * Seeds initial books if the database has 0 finished books.
+     * Seeds demonstration books only if the library is empty.
      * Ensures the completed section displays completed books (Alice in Wonderland & The Great Gatsby)
      * and Want-to-Read has Pride & Prejudice for immediate demonstration.
      */
@@ -275,40 +278,22 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         repairSeedBook(db, "The Great Gatsby", "F. Scott Fitzgerald", "64317", "FINISHED");
         repairSeedBook(db, "Pride and Prejudice", "Jane Austen", "1342", "WANT_TO_READ");
         Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_BOOKS, null);
-        int finishedCount = 0;
+        int bookCount = 0;
         if (cursor != null) {
             if (cursor.moveToFirst()) {
-                finishedCount = cursor.getInt(0);
+                bookCount = cursor.getInt(0);
             }
             cursor.close();
         }
 
-        if (finishedCount == 0) {
+        if (bookCount == 0) {
             // 1. Completed Classic: Alice's Adventures in Wonderland
-            Book alice = new Book(
-                    "Alice's Adventures in Wonderland",
-                    "Lewis Carroll",
-                    "1865",
-                    "Macmillan"
-            );
-            alice.setLastReadPosition(100);
-            alice.setStatus("FINISHED");
-            alice.setFormatLabel("Text ebook");
-            alice.setReadUrl("https://www.gutenberg.org/ebooks/11.html.images");
-            addOrUpdateBook(alice);
+            addSeedBook("Alice's Adventures in Wonderland", "Lewis Carroll", "1865",
+                    "Macmillan", "11", "FINISHED", 100);
 
             // 2. Completed Classic: The Great Gatsby
-            Book gatsby = new Book(
-                    "The Great Gatsby",
-                    "F. Scott Fitzgerald",
-                    "1925",
-                    "Charles Scribner's Sons"
-            );
-            gatsby.setLastReadPosition(100);
-            gatsby.setStatus("FINISHED");
-            gatsby.setFormatLabel("Text ebook");
-            gatsby.setReadUrl("https://www.gutenberg.org/ebooks/64317.html.images");
-            addOrUpdateBook(gatsby);
+            addSeedBook("The Great Gatsby", "F. Scott Fitzgerald", "1925",
+                    "Charles Scribner's Sons", "64317", "FINISHED", 100);
 
             // 3. Current In-Progress Reading: Pride and Prejudice
             Cursor checkPnp = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_BOOKS + " WHERE " + COL_TITLE + " LIKE '%Pride and Prejudice%'", null);
@@ -320,19 +305,18 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 checkPnp.close();
             }
             if (pnpCount == 0) {
-                Book pride = new Book(
-                        "Pride and Prejudice",
-                        "Jane Austen",
-                        "1813",
-                        "T. Egerton"
-                );
-                pride.setLastReadPosition(35);
-                pride.setStatus("WANT_TO_READ");
-                pride.setFormatLabel("Text ebook");
-                pride.setReadUrl("https://www.gutenberg.org/ebooks/1342.html.images");
-                addOrUpdateBook(pride);
+                addSeedBook("Pride and Prejudice", "Jane Austen", "1813",
+                        "T. Egerton", "1342", "WANT_TO_READ", 35);
             }
         }
+    }
+
+    private void addSeedBook(String title, String author, String year, String publisher,
+                             String gutenbergId, String status, int progress) {
+        Book book = new Book(-1, title, author, year, publisher, status, progress,
+                "https://www.gutenberg.org/ebooks/" + gutenbergId + ".html.images");
+        book.setFormatLabel("Text ebook");
+        addOrUpdateBook(book);
     }
 
     /** Repair only the known seeded editions; preserve existing progress and chosen statuses. */

@@ -9,9 +9,7 @@ import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 
 /**
- * ============================================================
  * QuoteDialog.java — "Save quote" Dialog (shared helper)
- * ============================================================
  * Week 11: Saves a quote / note into the SQLite "quotes" table.
  *
  * Used in two places, so the code lives here once:
@@ -20,7 +18,6 @@ import androidx.appcompat.app.AlertDialog;
  *                     so those fields are hidden.
  *  - QuotesActivity : the + button, to type a quote or lesson
  *                     by hand (book fields shown, optional).
- * ============================================================
  */
 public class QuoteDialog {
 

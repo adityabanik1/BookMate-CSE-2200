@@ -14,9 +14,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * ============================================================
  * ReadingStreak.java — Reading Streak & Daily Reading History
- * ============================================================
  * Tracks daily reading time, consecutive streaks, and reading history.
  *
  * Core Rule:
@@ -28,7 +26,6 @@ import java.util.Locale;
  *   - Stores day-by-day reading history (Date, Book Title, Author, Duration).
  *   - Calculates consecutive streak based on qualifying (>= 5 min) days.
  *   - Pre-seeds realistic reading history for the initial 2-day streak.
- * ============================================================
  */
 public class ReadingStreak {
 

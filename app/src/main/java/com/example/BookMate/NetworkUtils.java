@@ -9,15 +9,11 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 /**
- * ============================================================
  * NetworkUtils.java — HTTP Networking + Multi-Provider Search
- * ============================================================
  * Supports multiple public, free, keyless book providers:
  * 1. Project Gutenberg (via Gutendex REST API):
  *    - Keyless: https://gutendex.com/books/?search={query}
@@ -31,7 +27,6 @@ import java.util.Set;
  * Threading: This class performs BLOCKING network I/O.
  * Callers must invoke searchBooks() / getDefinition() on a
  * background thread (via ExecutorService) — never on the main thread.
- * ============================================================
  */
 public class NetworkUtils {
 
@@ -62,7 +57,6 @@ public class NetworkUtils {
             JSONObject first = meaning.getJSONArray("definitions").getJSONObject(0);
             return "(" + meaning.getString("partOfSpeech") + ") " + first.getString("definition");
         } catch (Exception e) {
-            e.printStackTrace();
             return null;
         }
     }
@@ -139,7 +133,6 @@ public class NetworkUtils {
                 return parseJsonResponse(json);
             }
         } catch (Exception e) {
-            e.printStackTrace();
         }
         return null;
     }
@@ -190,7 +183,6 @@ public class NetworkUtils {
                 books.add(book);
             }
         } catch (Exception e) {
-            e.printStackTrace();
         }
         return books;
     }
@@ -260,7 +252,6 @@ public class NetworkUtils {
                 return verifyGutenbergFormats(parseJsonResponse(json));
             }
         } catch (Exception e) {
-            e.printStackTrace();
         }
         return null;
     }
@@ -278,24 +269,10 @@ public class NetworkUtils {
 
         List<Book> combined = new ArrayList<>();
 
-        if (gutenbergResults != null) {
-            for (Book b : gutenbergResults) {
-                combined.add(b);
-            }
-        }
-
-        if (openLibResults != null) {
-            for (Book b : openLibResults) {
-                combined.add(b);
-            }
-        }
+        if (gutenbergResults != null) combined.addAll(gutenbergResults);
+        if (openLibResults != null) combined.addAll(openLibResults);
 
         return BookSearchRanking.rank(query, combined);
-    }
-
-    private static String normalizeTitle(String title) {
-        if (title == null) return "";
-        return title.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 
     private static String fetchJsonFromUrl(String urlString, int timeoutMs) {
@@ -405,7 +382,6 @@ public class NetworkUtils {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
         }
 
         return books;
@@ -424,16 +400,10 @@ public class NetworkUtils {
             try {
                 String pgId = readUrl.replaceAll(".*gutenberg\\.org/ebooks/([0-9]+).*", "$1");
                 if (pgId.matches("\\d+")) {
-                    String text = downloadTextFromUrl("https://www.gutenberg.org/cache/epub/" + pgId + "/pg" + pgId + ".txt", MAX_BOOK_CHARS);
-                    if (text == null) {
-                        text = downloadTextFromUrl("https://www.gutenberg.org/files/" + pgId + "/" + pgId + "-0.txt", MAX_BOOK_CHARS);
-                    }
-                    if (text != null && text.length() > 200) {
-                        return cleanBookText(text);
-                    }
+                    String text = downloadGutenbergText(pgId);
+                    if (text != null) return text;
                 }
             } catch (Exception e) {
-                e.printStackTrace();
             }
         }
 
@@ -452,20 +422,14 @@ public class NetworkUtils {
                             JSONArray pgArray = doc.getJSONArray("id_project_gutenberg");
                             if (pgArray.length() > 0) {
                                 String pgId = pgArray.getString(0);
-                                String text = downloadTextFromUrl("https://www.gutenberg.org/cache/epub/" + pgId + "/pg" + pgId + ".txt", MAX_BOOK_CHARS);
-                                if (text == null) {
-                                    text = downloadTextFromUrl("https://www.gutenberg.org/files/" + pgId + "/" + pgId + "-0.txt", MAX_BOOK_CHARS);
-                                }
-                                if (text != null && text.length() > 200) {
-                                    return cleanBookText(text);
-                                }
+                                String text = downloadGutenbergText(pgId);
+                                if (text != null) return text;
                             }
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
         }
 
         // 3. Query Gutendex API for free public domain books (English)
@@ -499,7 +463,6 @@ public class NetworkUtils {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
         }
 
         // 3. Query Internet Archive OCR text if ia identifier exists
@@ -517,16 +480,22 @@ public class NetworkUtils {
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
             }
         }
 
         return null;
     }
 
-    /**
-     * Downloads a complete text response.
-     */
+    // Try the current Gutenberg text URL, then the older file location.
+    private static String downloadGutenbergText(String id) {
+        String text = downloadTextFromUrl("https://www.gutenberg.org/cache/epub/" + id + "/pg" + id + ".txt", MAX_BOOK_CHARS);
+        if (text == null) {
+            text = downloadTextFromUrl("https://www.gutenberg.org/files/" + id + "/" + id + "-0.txt", MAX_BOOK_CHARS);
+        }
+        return text != null && text.length() > 200 ? cleanBookText(text) : null;
+    }
+
+    /** Downloads a complete text response. */
     public static String downloadTextFromUrl(String urlString, int maxChars) {
         int redirects = 0;
         while (redirects < 5 && urlString != null) {

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Bookmate</string>
+    <string name="app_name">BookMate</string>
     <string name="loan_title">Internet Archive loans</string>
     <string name="loan_google_browser">Google sign-in (browser)</string>
     <string name="loan_google_explanation">Google sign-in requires a supported browser. Open the book in your browser, sign in there, and continue borrowing and reading there. That browser sign-in does not connect BookMate’s in-app loan controls. To use those controls, sign in through Connect account with your Internet Archive email and password, if your account supports that method.</string>
@@ -43,8 +43,8 @@
     <string name="loan_page_error">The provider page could not load. Check your connection, then use Connect account or Borrow &amp; Read to retry. Tap Refresh to verify a pending request.</string>
     <string name="loan_provider_only">Only secure Open Library and Internet Archive pages can open in this account screen.</string>
     <string name="loan_download_notice">This prototype reads loans online. Protected downloads require a compatible authorized reader.</string>
-    <string name="loan_split_controls">⚙️ Loan Controls</string>
-    <string name="loan_split_reading">📖 Reader Mode</string>
+    <string name="loan_split_controls">Loan Controls</string>
+    <string name="loan_split_reading">Reader Mode</string>
     <string name="loan_split_action_collapse">Expand Reader ▲</string>
     <string name="loan_split_action_expand">Show Controls ▼</string>
 </resources>

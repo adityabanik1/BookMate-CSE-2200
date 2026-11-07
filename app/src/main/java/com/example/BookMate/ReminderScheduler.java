@@ -10,9 +10,7 @@ import android.util.Log;
 import java.util.Calendar;
 
 /**
- * ============================================================
  * ReminderScheduler.java — AlarmManager Helper
- * ============================================================
  * Week 10: All AlarmManager code lives here so it can be
  *          reused by MainActivity (reminder switch / Test
  *          button) and BootReceiver (re-schedule after reboot).
@@ -22,7 +20,6 @@ import java.util.Calendar;
  * - scheduleTest() : one-time alarm 10 seconds from now.
  *                    On Android 12+ exact alarms may be denied,
  *                    so we fall back to an inexact set().
- * ============================================================
  */
 public class ReminderScheduler {
 
@@ -65,7 +62,6 @@ public class ReminderScheduler {
                 AlarmManager.INTERVAL_DAY,
                 getReminderIntent(context, REQUEST_DAILY));
 
-        Log.d(TAG, "scheduleDaily: Alarm scheduled for 9:00 AM daily");
     }
 
     /**
@@ -76,7 +72,6 @@ public class ReminderScheduler {
         if (alarmManager == null) return;
 
         alarmManager.cancel(getReminderIntent(context, REQUEST_DAILY));
-        Log.d(TAG, "cancelDaily: Alarm cancelled");
     }
 
     /**
@@ -99,11 +94,9 @@ public class ReminderScheduler {
 
         if (canUseExact) {
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
-            Log.d(TAG, "scheduleTest: Exact test alarm set for 10 seconds from now");
         } else {
             // Inexact alarm — may arrive a little later than 10 seconds
             alarmManager.set(AlarmManager.RTC_WAKEUP, triggerTime, pendingIntent);
-            Log.d(TAG, "scheduleTest: Exact alarms not allowed, using inexact set()");
         }
     }
 }

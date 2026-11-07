@@ -1,0 +1,9 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- A monochrome version of the faceted book mark for Android status icons. -->
+    <path android:fillColor="#FFFFFFFF"
+        android:pathData="M2,5 L10.8,9.5 L10.8,21 L2,16.5 Z M13.2,9.5 L22,5 L22,16.5 L13.2,21 Z M4,2 L10.8,6.8 L10.8,8 L4,4.5 Z M13.2,6.8 L20,2 L20,4.5 L13.2,8 Z" />
+</vector>

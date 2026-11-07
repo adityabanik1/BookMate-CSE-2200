@@ -25,9 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * ============================================================
  * CommunityActivity.java — Live Community Recommendations
- * ============================================================
  * Week 8 : Explicit Intent to BookDetailActivity on item click.
  * Week 9 : Reuses BookAdapter + item_book.xml for the list.
  * Firebase: Realtime Database. A ValueEventListener on
@@ -35,27 +33,23 @@ import java.util.List;
  *          data and again every time anyone adds a book, so
  *          the list updates live.
  *          Listener is added in onStart() and removed in onStop().
- * ============================================================
  */
 public class CommunityActivity extends AppCompatActivity implements BookAdapter.OnBookClickListener {
 
     private static final String TAG = "CommunityActivity";
 
-    // ── UI References ─────────────────────────────────────────
+    // UI References
     private RecyclerView recyclerCommunity;
     private ProgressBar progressCommunity;
     private TextView tvCommunityEmpty;
 
-    // ── Data ──────────────────────────────────────────────────
+    // Data
     private BookAdapter adapter;
 
-    // ── Firebase ──────────────────────────────────────────────
+    // Firebase
     private DatabaseReference recommendationsRef;
     private ValueEventListener recommendationsListener;
-
-    // ═══════════════════════════════════════════════════════════
     // Lifecycle — Week 8
-    // ═══════════════════════════════════════════════════════════
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,7 +63,7 @@ public class CommunityActivity extends AppCompatActivity implements BookAdapter.
         progressCommunity = findViewById(R.id.progressCommunity);
         tvCommunityEmpty = findViewById(R.id.tvCommunityEmpty);
 
-        // ── Setup RecyclerView (Week 9: reuse BookAdapter) ────
+        // Setup RecyclerView (Week 9: reuse BookAdapter)
         adapter = new BookAdapter(new ArrayList<>(), this);
         adapter.setUnsavedLabel("Community");
         recyclerCommunity.setLayoutManager(new LinearLayoutManager(this));
@@ -93,10 +87,7 @@ public class CommunityActivity extends AppCompatActivity implements BookAdapter.
         // Stop listening when the screen is hidden (saves battery and data)
         recommendationsRef.removeEventListener(recommendationsListener);
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Firebase Realtime Database — ValueEventListener
-    // ═══════════════════════════════════════════════════════════
 
     private ValueEventListener createListener() {
         return new ValueEventListener() {
@@ -119,7 +110,6 @@ public class CommunityActivity extends AppCompatActivity implements BookAdapter.
                             "N/A"));
                 }
 
-                Log.d(TAG, "onDataChange: " + books.size() + " recommendations");
                 progressCommunity.setVisibility(View.GONE);
                 tvCommunityEmpty.setVisibility(books.isEmpty() ? View.VISIBLE : View.GONE);
                 adapter.updateBooks(books);
@@ -136,10 +126,7 @@ public class CommunityActivity extends AppCompatActivity implements BookAdapter.
             }
         };
     }
-
-    // ═══════════════════════════════════════════════════════════
     // Item Click — Week 8: Explicit Intent
-    // ═══════════════════════════════════════════════════════════
 
     @Override
     public void onBookClick(Book book) {

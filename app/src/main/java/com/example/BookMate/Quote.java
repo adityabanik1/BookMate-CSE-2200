@@ -1,9 +1,7 @@
 package com.example.BookMate;
 
 /**
- * ============================================================
  * Quote.java — Model / Data Class
- * ============================================================
  * Week 9 : Used by QuoteAdapter to populate RecyclerView items.
  * Week 11: Stored in the SQLite "quotes" table.
  *
@@ -12,7 +10,6 @@ package com.example.BookMate;
  * The book is remembered by title + author — the same way
  * DatabaseHelper matches books — so the quote still makes
  * sense even if the book is later removed from the list.
- * ============================================================
  */
 public class Quote {
 
@@ -25,7 +22,7 @@ public class Quote {
     private String bookAuthor; // may be null
     private long createdAt;    // when it was saved (System.currentTimeMillis())
 
-    // ── Constructors ──────────────────────────────────────────
+    // Constructors
 
     /** Full constructor (used when loading from SQLite). */
     public Quote(int id, String text, String note, String bookTitle,
@@ -43,7 +40,7 @@ public class Quote {
         this(-1, text, note, bookTitle, bookAuthor, System.currentTimeMillis());
     }
 
-    // ── Getters ───────────────────────────────────────────────
+    // Getters
 
     public int getId() { return id; }
     public String getText() { return text; }
@@ -52,7 +49,7 @@ public class Quote {
     public String getBookAuthor() { return bookAuthor; }
     public long getCreatedAt() { return createdAt; }
 
-    // ── Helpers ───────────────────────────────────────────────
+    // Helpers
 
     /** Returns true if we know which book this quote is from. */
     public boolean hasBook() {
