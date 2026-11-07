@@ -8,7 +8,8 @@ import android.util.Log;
 
 /**
  * BootReceiver.java — BroadcastReceiver (BOOT_COMPLETED)
- * Week 10: Android clears all alarms when the phone restarts.
+ * Week 10: Android clears all alarms when the pho
+ * ne restarts.
  *          This receiver runs after boot and re-schedules the
  *          daily reminder if the user had it switched on.
  */

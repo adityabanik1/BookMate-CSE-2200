@@ -18,7 +18,6 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.CollectionReference;
-import com.google.firebase.firestore.DocumentSnapshot;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -91,13 +90,7 @@ public class QuotesActivity extends AppCompatActivity implements QuoteAdapter.On
         ref.get().addOnSuccessListener(snapshot -> {
             FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
             if (isFinishing() || isDestroyed() || current == null || !uid.equals(current.getUid())) return;
-            for (DocumentSnapshot doc : snapshot.getDocuments()) {
-                String text = doc.getString("text");
-                Long created = doc.getLong("createdAt");
-                if (text == null || created == null) continue;
-                dbHelper.addQuoteIfNew(new Quote(-1, text, doc.getString("note"),
-                        doc.getString("bookTitle"), doc.getString("bookAuthor"), created));
-            }
+            QuoteCloud.restore(this, dbHelper, snapshot);
             loadQuotes();
         }).addOnFailureListener(error -> {
             if (!isFinishing() && !isDestroyed()) Toast.makeText(this,
@@ -132,15 +125,7 @@ public class QuotesActivity extends AppCompatActivity implements QuoteAdapter.On
                 .setTitle("Delete quote?")
                 .setMessage("This quote and its note will be removed.")
                 .setPositiveButton("Delete", (dialog, which) -> {
-                    CollectionReference ref = QuoteCloud.collection();
-                    if (ref != null) {
-                        ref.whereEqualTo("text", quote.getText()).get().addOnSuccessListener(snapshot -> {
-                            for (DocumentSnapshot doc : snapshot.getDocuments()) {
-                                Long created = doc.getLong("createdAt");
-                                if (created != null && created == quote.getCreatedAt()) doc.getReference().delete();
-                            }
-                        });
-                    }
+                    QuoteCloud.delete(this, quote);
                     dbHelper.deleteQuote(quote.getId());
                     Toast.makeText(this, "Quote deleted", Toast.LENGTH_SHORT).show();
                     loadQuotes(); // refresh the list

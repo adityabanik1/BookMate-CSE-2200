@@ -39,7 +39,7 @@ public class FeaturedBooksParser {
 
         try {
             InputStream is = context.getAssets().open(FILE_NAME);
-            XmlPullParser parser = Xml.newPullParser();
+            XmlPullParser parser = Xml.newPullParser(); // xml parse
             parser.setInput(is, "UTF-8");
 
             // Values for the <book> we are currently reading

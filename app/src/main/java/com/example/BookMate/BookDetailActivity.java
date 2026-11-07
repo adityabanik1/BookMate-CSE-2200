@@ -1,6 +1,10 @@
 package com.example.BookMate;
 
+import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.ContactsContract;
 import android.os.Bundle;
 import android.speech.tts.TextToSpeech;
 import android.view.View;
@@ -12,6 +16,8 @@ import android.widget.Toast;
 import android.view.inputmethod.InputMethodManager;
 import android.view.inputmethod.EditorInfo;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -61,6 +67,15 @@ public class BookDetailActivity extends AppCompatActivity {
     private int chatGeneration;
     private int summaryGeneration;
     private View[] chatSuggestions;
+
+    // Week 10: Content Provider — the phone's contact picker returns the URI of the chosen
+    // contact; we then read that row through the Contacts provider with a ContentResolver.
+    private final ActivityResultLauncher<Intent> contactPicker = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    sendToContact(result.getData().getData());
+                }
+            });
     // Lifecycle — Week 8
 
     @Override
@@ -534,9 +549,63 @@ public class BookDetailActivity extends AppCompatActivity {
             startActivity(Intent.createChooser(shareIntent, "Share via"));
         }));
 
+        // Send to a Contact (Week 10: Content Provider) — open the phone's contact picker
+        findViewById(R.id.btnSendToContact).setOnClickListener(v -> UiUtils.animateClick(v, () -> {
+            Intent pick = new Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI);
+            try {
+                contactPicker.launch(pick);
+            } catch (ActivityNotFoundException e) {
+                Toast.makeText(this, "No contacts app found", Toast.LENGTH_SHORT).show();
+            }
+        }));
+
         // ── Recommend to Community (Firebase Realtime Database)
         btnRecommend.setOnClickListener(v -> UiUtils.animateClick(v, this::recommendBook));
     }
+    // Content Provider — read the chosen contact
+
+    /**
+     * Queries the Contacts provider for the contact the user picked (name + phone number),
+     * then opens the SMS app with the recommendation ready to send.
+     * The picker grants access to this one contact, so no READ_CONTACTS permission is needed.
+     */
+    private void sendToContact(Uri contactUri) {
+        if (contactUri == null) return;
+        String[] columns = {
+                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                ContactsContract.CommonDataKinds.Phone.NUMBER
+        };
+
+        String name = null;
+        String number = null;
+        try (Cursor cursor = getContentResolver().query(contactUri, columns, null, null, null)) {
+            if (cursor != null && cursor.moveToFirst()) {
+                name = cursor.getString(0);
+                number = cursor.getString(1);
+            }
+        } catch (Exception e) {
+            number = null;
+        }
+
+        if (number == null || number.trim().isEmpty()) {
+            Toast.makeText(this, "This contact has no phone number", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String greeting = (name != null && !name.isEmpty()) ? "Hi " + name + ", c" : "C";
+        String message = greeting + "heck out this book on BookMate: "
+                + book.getTitle() + " by " + book.getAuthor();
+
+        // Implicit Intent: open the SMS app addressed to this contact
+        Intent sms = new Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:" + Uri.encode(number)));
+        sms.putExtra("sms_body", message);
+        try {
+            startActivity(sms);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(this, "No messaging app found", Toast.LENGTH_SHORT).show();
+        }
+    }
+
     // Firebase Realtime Database — Recommend
 
     /**

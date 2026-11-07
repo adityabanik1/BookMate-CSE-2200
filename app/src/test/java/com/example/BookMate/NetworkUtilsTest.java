@@ -16,6 +16,24 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class NetworkUtilsTest {
+    @Test public void fallbackRejectsSameTitleByDifferentAuthor() throws Exception {
+        assertFalse(NetworkUtils.matchesBook("The Art of War", "Sun Tzu", "The Art of War",
+                new org.json.JSONArray("[\"Niccolo Machiavelli\"]"), false));
+        assertTrue(NetworkUtils.matchesBook("The Art of War", "Sun Tzu", "The Art of War",
+                new org.json.JSONArray("[\"Sun Tzu\"]"), false));
+    }
+
+    @Test public void fallbackChecksGutendexAuthorsAndNormalizedTitle() throws Exception {
+        org.json.JSONArray authors = new org.json.JSONArray("[{\"name\":\"Austen, Jane\"}]");
+        assertTrue(NetworkUtils.matchesBook("Pride and Prejudice", "Jane Austen",
+                "PRIDE AND PREJUDICE!", authors, true));
+        assertFalse(NetworkUtils.matchesBook("Pride and Prejudice", "Jane Austen",
+                "Pride and Prejudice Study Guide", authors, true));
+        assertFalse(NetworkUtils.matchesBook("Pride and Prejudice", "Unknown Author",
+                "Pride and Prejudice", authors, true));
+        assertFalse(NetworkUtils.matchesBook("Pride and Prejudice", "Jane Austen",
+                "Pride and Prejudice", null, true));
+    }
 
     @Test
     public void searchPrefersDesignatedLendingEditionOverFirstScan() throws Exception {

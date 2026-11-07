@@ -561,6 +561,19 @@
                 android:textSize="14sp"
                 app:cornerRadius="10dp" />
 
+            <!-- Content Provider: pick a phone contact and send them this book -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSendToContact"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:text="Send to a Contact"
+                app:icon="@drawable/ic_share"
+                app:iconGravity="textStart"
+                app:iconTint="?attr/colorPrimary"
+                android:textSize="14sp"
+                app:cornerRadius="10dp" />
+
             <!-- Realtime Database: recommend this book to the community -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnRecommend"

@@ -410,14 +410,17 @@ public class NetworkUtils {
         // 2. Query Open Library to check if a Project Gutenberg ID exists for this book
         try {
             String encodedTitle = URLEncoder.encode(title.trim(), "UTF-8");
-            String olUrl = BASE_URL + "?q=" + encodedTitle + "+id_project_gutenberg:*&limit=1&fields=id_project_gutenberg";
+            String olUrl = BASE_URL + "?q=(" + encodedTitle
+                    + ")+AND+id_project_gutenberg:*&limit=20&fields=title,author_name,id_project_gutenberg";
             String jsonResponse = downloadTextFromUrl(olUrl, 50000);
             if (jsonResponse != null) {
                 JSONObject root = new JSONObject(jsonResponse);
                 if (root.has("docs")) {
                     JSONArray docs = root.getJSONArray("docs");
-                    if (docs.length() > 0) {
-                        JSONObject doc = docs.getJSONObject(0);
+                    for (int i = 0; i < docs.length(); i++) {
+                        JSONObject doc = docs.getJSONObject(i);
+                        if (!matchesBook(title, author, doc.optString("title"),
+                                doc.optJSONArray("author_name"), false)) continue;
                         if (doc.has("id_project_gutenberg")) {
                             JSONArray pgArray = doc.getJSONArray("id_project_gutenberg");
                             if (pgArray.length() > 0) {
@@ -441,8 +444,10 @@ public class NetworkUtils {
                 JSONObject root = new JSONObject(jsonResponse);
                 if (root.has("results")) {
                     JSONArray results = root.getJSONArray("results");
-                    if (results.length() > 0) {
-                        JSONObject firstBook = results.getJSONObject(0);
+                    for (int i = 0; i < results.length(); i++) {
+                        JSONObject firstBook = results.getJSONObject(i);
+                        if (!matchesBook(title, author, firstBook.optString("title"),
+                                firstBook.optJSONArray("authors"), true)) continue;
                         if (firstBook.has("formats")) {
                             JSONObject formats = firstBook.getJSONObject("formats");
                             String textUrl = null;
@@ -484,6 +489,30 @@ public class NetworkUtils {
         }
 
         return null;
+    }
+
+    /** Only use a fallback text when both its title and a credited author match. */
+    static boolean matchesBook(String title, String author, String candidateTitle,
+                               JSONArray authors, boolean gutendex) {
+        String expectedAuthor = normalizeBookName(author);
+        if (normalizeBookName(title).isEmpty() || expectedAuthor.isEmpty()
+                || "unknown author".equals(expectedAuthor) || authors == null
+                || !normalizeBookName(title).equals(normalizeBookName(candidateTitle))) return false;
+        for (int i = 0; i < authors.length(); i++) {
+            Object value = authors.opt(i);
+            String name = gutendex && value instanceof JSONObject
+                    ? formatAuthorName(((JSONObject) value).optString("name"))
+                    : value instanceof String ? (String) value : "";
+            if (expectedAuthor.equals(normalizeBookName(name))) return true;
+        }
+        return false;
+    }
+
+    private static String normalizeBookName(String value) {
+        if (value == null) return "";
+        return java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "").toLowerCase(Locale.ROOT)
+                .replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
     }
 
     // Try the current Gutenberg text URL, then the older file location.

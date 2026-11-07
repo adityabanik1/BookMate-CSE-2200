@@ -35,7 +35,6 @@ import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.WriteBatch;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -564,51 +563,19 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
             return;
         }
 
-        // Turn every Book and Quote into a Map (one Firestore document each)
-        List<Map<String, Object>> quoteDocs = new ArrayList<>();
-        for (Quote quote : quotes) {
-            quoteDocs.add(QuoteCloud.toMap(quote));
-        }
-
         Toast.makeText(this, "Backing up...", Toast.LENGTH_SHORT).show();
         // A partly restored phone must not erase books already in the account.
         for (Book book : books) BookCloud.save(this, book);
         Toast.makeText(this, "Book sync requested. Connect to finish saving to your account.",
                 Toast.LENGTH_LONG).show();
-        replaceCloudCollection("quotes", quoteDocs);
+        for (Quote quote : quotes) {
+            QuoteCloud.save(quote, () -> {}, this::showQuoteBackupError);
+        }
     }
 
-    /**
-     * Replaces everything in users/{uid}/{name} with the given documents:
-     *   1. read the old backup
-     *   2. in ONE batch (all or nothing): delete the old documents, add the new ones
-     * Deleting first means things removed on the phone don't come back on Restore.
-     * A batch holds up to 500 operations, so this works for about 250 items.
-     */
-    private void replaceCloudCollection(String name, List<Map<String, Object>> docs) {
-        CollectionReference ref = getCloudCollection(name);
-        if (ref == null) return;
-        String uid = ref.getParent().getId();
-
-        ref.get().addOnSuccessListener(oldBackup -> {
-            if (!isCurrentCloudUser(uid)) return;
-            if (oldBackup.size() + docs.size() > 500) {
-                Toast.makeText(this, "This backup is too large for one atomic update. "
-                        + "Your existing cloud backup has been kept.", Toast.LENGTH_LONG).show();
-                return;
-            }
-            WriteBatch batch = FirebaseFirestore.getInstance().batch();
-            for (DocumentSnapshot doc : oldBackup.getDocuments()) {
-                batch.delete(doc.getReference());   // remove the old copy
-            }
-            for (Map<String, Object> data : docs) {
-                batch.set(ref.document(), data);    // document() = new auto ID
-            }
-            batch.commit()
-                    .addOnSuccessListener(unused -> Toast.makeText(this,
-                            "Backed up " + docs.size() + " " + name, Toast.LENGTH_SHORT).show())
-                    .addOnFailureListener(this::showCloudError);
-        }).addOnFailureListener(this::showCloudError);
+    private void showQuoteBackupError() {
+        Toast.makeText(this, "Quote backup could not sync. Your account copies were kept.",
+                Toast.LENGTH_LONG).show();
     }
 
     /** Asks before restoring, because it overwrites matching books in SQLite. */
@@ -646,12 +613,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         // 2. Quotes
         quotesRef.get().addOnSuccessListener(snapshot -> {
             if (!isCurrentCloudUser(uid)) return;
-            int added = 0;
-            for (DocumentSnapshot doc : snapshot.getDocuments()) {
-                if (dbHelper.addQuoteIfNew(mapToQuote(doc))) {
-                    added++;
-                }
-            }
+            int added = QuoteCloud.restore(this, dbHelper, snapshot);
             Toast.makeText(this, "Restored " + added + " new quotes", Toast.LENGTH_SHORT).show();
         }).addOnFailureListener(this::showCloudError);
     }
@@ -704,18 +666,6 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     private boolean isCurrentCloudUser(String uid) {
         FirebaseUser current = FirebaseAuth.getInstance().getCurrentUser();
         return !isFinishing() && !isDestroyed() && current != null && uid.equals(current.getUid());
-    }
-
-    /** Converts a Firestore document back into a Quote (id -1 = not in SQLite yet). */
-    private Quote mapToQuote(DocumentSnapshot doc) {
-        Long createdAt = doc.getLong("createdAt"); // Firestore stores numbers as Long
-        return new Quote(
-                -1,
-                doc.getString("text"),
-                doc.getString("note"),
-                doc.getString("bookTitle"),
-                doc.getString("bookAuthor"),
-                (createdAt != null) ? createdAt : System.currentTimeMillis());
     }
 
     private void showCloudError(Exception e) {
