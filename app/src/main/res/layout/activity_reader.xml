@@ -20,7 +20,8 @@
         app:titleTextColor="@android:color/white"
         app:subtitleTextColor="@android:color/white"
         app:navigationIcon="@drawable/ic_arrow_back"
-        app:navigationIconTint="@android:color/white">
+        app:navigationIconTint="@android:color/white"
+        app:popupTheme="@style/ThemeOverlay.BookMate.PopupMenu">
 
         <!-- Mode Toggle & Action Buttons inside Toolbar -->
         <LinearLayout
@@ -30,6 +31,17 @@
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:paddingEnd="8dp">
+
+            <!-- Find in book (🔍) -->
+            <ImageButton
+                android:id="@+id/btnFind"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_marginEnd="4dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@android:drawable/ic_menu_search"
+                android:contentDescription="Find in book"
+                app:tint="@android:color/white" />
 
             <!-- Text-to-Speech (TTS) Button -->
             <ImageButton
@@ -41,14 +53,14 @@
                 android:contentDescription="Listen to Book (Text-to-Speech)"
                 app:tint="@android:color/white" />
 
-            <!-- Theme Switcher (Light / Sepia / Dark) -->
+            <!-- Theme Switcher (White / Dark / Sepia) -->
             <ImageButton
                 android:id="@+id/btnThemeToggle"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:layout_marginStart="4dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:src="@android:drawable/ic_menu_view"
+                android:src="@drawable/ic_dark_mode"
                 android:contentDescription="Switch Reading Theme"
                 app:tint="@android:color/white" />
 
@@ -68,17 +80,46 @@
 
     </com.google.android.material.appbar.MaterialToolbar>
 
-    <!-- Reading Progress Bar -->
+    <LinearLayout
+        android:id="@+id/layoutOnlineNotice"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="8dp"
+        android:background="#F5F5F5"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Some editions offer previews only. Check the book page for full access or borrowing options."
+            android:textColor="#333333"
+            android:textSize="12sp" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnOpenWebsite"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Open in browser"
+            android:textSize="12sp" />
+
+    </LinearLayout>
+
+    <!-- Reading Progress Bar (Thin line right below the toolbar) -->
     <ProgressBar
         android:id="@+id/progressBarReading"
         style="?android:attr/progressBarStyleHorizontal"
         android:layout_width="match_parent"
         android:layout_height="4dp"
-        android:max="100"
         android:progress="0"
-        android:progressTint="?attr/colorSecondary" />
+        android:max="100"
+        android:progressTint="?attr/colorSecondary"
+        android:progressBackgroundTint="#33000000" />
 
-    <!-- Content Area: Native Scrollable Text View or In-App WebView -->
+    <!-- Container holding either Native Text or In-App WebView -->
     <FrameLayout
         android:id="@+id/containerContent"
         android:layout_width="match_parent"
@@ -139,6 +180,8 @@
                     android:text="Loading book content..."
                     android:textSize="16sp"
                     android:lineSpacingMultiplier="1.4"
+                    android:breakStrategy="simple"
+                    android:hyphenationFrequency="none"
                     android:textColor="#222222"
                     android:textIsSelectable="true" />
 
@@ -163,6 +206,72 @@
 
     </FrameLayout>
 
+    <!-- Sections keep long books readable without one oversized TextView. -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnReaderFullscreen"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_gravity="end"
+        android:text="Full screen"
+        android:contentDescription="Enter full-screen text reading" />
+
+    <LinearLayout
+        android:id="@+id/layoutSectionControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:visibility="gone">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnPreviousSection"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Previous" />
+
+        <TextView
+            android:id="@+id/tvSection"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:textColor="#333333"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?attr/selectableItemBackground" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnChapters"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Chapters"
+            app:icon="@drawable/ic_toc"
+            app:iconGravity="textStart"
+            app:iconSize="16dp"
+            android:textSize="12sp"
+            android:visibility="gone" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnNextSection"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Next" />
+    </LinearLayout>
+
     <!-- Bottom Appearance & Progress Controls Bar -->
     <LinearLayout
         android:id="@+id/layoutBottomControls"
@@ -172,46 +281,77 @@
         android:gravity="center_vertical"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="8dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
         android:background="#F5F5F5">
 
-        <!-- Font Decrease Button (A-) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnFontDecrease"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="48dp"
-            android:layout_height="38dp"
-            android:padding="0dp"
-            android:text="A-"
-            android:textSize="13sp" />
-
-        <!-- Font Size Indicator -->
-        <TextView
-            android:id="@+id/tvFontSize"
+        <!-- Interactive Font Size Stepper Capsule -->
+        <LinearLayout
+            android:id="@+id/layoutFontSizeCapsule"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
-            android:layout_marginEnd="8dp"
-            android:text="16sp"
-            android:textSize="13sp"
-            android:textColor="#333333" />
+            android:layout_height="40dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_stepper_capsule"
+            android:paddingStart="4dp"
+            android:paddingEnd="4dp">
 
-        <!-- Font Increase Button (A+) -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnFontIncrease"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-            android:layout_width="48dp"
-            android:layout_height="38dp"
-            android:padding="0dp"
-            android:text="A+"
-            android:textSize="13sp" />
+            <!-- Font Decrease Button (-) -->
+            <ImageButton
+                android:id="@+id/btnFontDecrease"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_text_decrease"
+                android:contentDescription="Decrease font size"
+                android:scaleType="centerInside" />
+
+            <!-- Font Size Indicator -->
+            <TextView
+                android:id="@+id/tvFontSize"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="48dp"
+                android:gravity="center"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:text="16 sp"
+                android:textStyle="bold"
+                android:textSize="13sp"
+                android:textColor="#1E293B" />
+
+            <!-- Font Increase Button (+) -->
+            <ImageButton
+                android:id="@+id/btnFontIncrease"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_text_increase"
+                android:contentDescription="Increase font size"
+                android:scaleType="centerInside" />
+
+        </LinearLayout>
 
         <!-- Spacer -->
         <View
             android:layout_width="0dp"
             android:layout_height="1dp"
             android:layout_weight="1" />
+
+        <!-- Quick Dark/White Theme Toggle in Bottom Bar -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnThemeQuickToggle"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:layout_marginEnd="8dp"
+            android:text="Dark Mode"
+            app:icon="@drawable/ic_dark_mode"
+            app:iconGravity="textStart"
+            app:iconSize="16dp"
+            android:textSize="12sp"
+            android:textColor="#334155"
+            app:cornerRadius="18dp" />
 
         <!-- Reading Progress Text Percentage -->
         <TextView
@@ -220,6 +360,7 @@
             android:layout_height="wrap_content"
             android:text="0% read"
             android:textSize="13sp"
+            android:textStyle="bold"
             android:textColor="#555555" />
 
     </LinearLayout>

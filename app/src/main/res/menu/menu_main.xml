@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- MainActivity toolbar menu — Professional Vector Icons & Titles (3-dot overflow menu) -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- SQLite: saved quotes, passages and lessons -->
+    <item
+        android:id="@+id/action_quotes"
+        android:icon="@drawable/ic_format_quote"
+        android:title="Quotes &amp; Notes"
+        app:showAsAction="never" />
+
+    <!-- Realtime Database: live community recommendations -->
+    <item
+        android:id="@+id/action_community"
+        android:icon="@drawable/ic_groups"
+        android:title="Community Picks"
+        app:showAsAction="never" />
+
+    <!-- Firestore: copy SQLite books + quotes to the cloud -->
+    <item
+        android:id="@+id/action_backup"
+        android:icon="@drawable/ic_cloud_upload"
+        android:title="Back Up to Cloud"
+        app:showAsAction="never" />
+
+    <!-- Firestore: copy cloud books + quotes back into SQLite -->
+    <item
+        android:id="@+id/action_restore"
+        android:icon="@drawable/ic_cloud_download"
+        android:title="Restore from Cloud"
+        app:showAsAction="never" />
+
+    <!-- Authentication: sign out -->
+    <item
+        android:id="@+id/action_logout"
+        android:icon="@drawable/ic_logout"
+        android:title="Logout"
+        app:showAsAction="never" />
+
+</menu>

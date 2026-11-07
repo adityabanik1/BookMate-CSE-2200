@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Quotes & Notes: dialog for saving a quote or note (used by QuoteDialog) -->
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="8dp">
+
+        <!-- The quote / passage (same 2000-character limit as QuoteDialog.MAX_QUOTE_LENGTH) -->
+        <EditText
+            android:id="@+id/etQuoteText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_edit_text"
+            android:gravity="top|start"
+            android:hint="Quote or passage"
+            android:inputType="textMultiLine|textCapSentences"
+            android:maxLength="2000"
+            android:maxLines="8"
+            android:minLines="3"
+            android:padding="12dp"
+            android:textSize="15sp" />
+
+        <!-- Book + author: only shown when adding a quote by hand -->
+        <EditText
+            android:id="@+id/etQuoteBook"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_edit_text"
+            android:hint="Book title (optional)"
+            android:inputType="textCapWords"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:singleLine="true"
+            android:textSize="15sp" />
+
+        <EditText
+            android:id="@+id/etQuoteAuthor"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="10dp"
+            android:background="@drawable/bg_edit_text"
+            android:hint="Author (optional)"
+            android:inputType="textPersonName|textCapWords"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:singleLine="true"
+            android:textSize="15sp" />
+
+        <!-- Personal note / lesson learned -->
+        <EditText
+            android:id="@+id/etQuoteNote"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_edit_text"
+            android:gravity="top|start"
+            android:hint="My note or lesson (optional)"
+            android:inputType="textMultiLine|textCapSentences"
+            android:maxLength="1000"
+            android:maxLines="5"
+            android:minLines="2"
+            android:padding="12dp"
+            android:textSize="15sp" />
+
+    </LinearLayout>
+
+</ScrollView>

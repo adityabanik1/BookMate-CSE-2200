@@ -4,12 +4,16 @@
 
     <!-- Week 11: Internet permission for Open Library API calls -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Week 10: Notification permission (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- Week 10: Exact alarm permission for daily reading reminder -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
+    <!-- Week 10: Re-schedule the daily reminder after the phone restarts -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
         android:allowBackup="true"
@@ -22,15 +26,27 @@
         android:theme="@style/Theme.BookMate"
         tools:targetApi="31">
 
-        <!-- Week 8: Main Activity (Launcher) — Offline reading list -->
+        <!-- Firebase Auth: Login Activity (Launcher) — email + password -->
         <activity
-            android:name=".MainActivity"
+            android:name=".LoginActivity"
+            android:icon="@mipmap/ic_launcher"
+            android:roundIcon="@mipmap/ic_launcher_round"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Week 8: Main Activity — Offline reading list -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false" />
+
+        <!-- Firebase Realtime Database: live community recommendations -->
+        <activity
+            android:name=".CommunityActivity"
+            android:exported="false" />
 
         <!-- Week 8: Search Activity — Online book search via API -->
         <activity
@@ -47,10 +63,29 @@
             android:name=".ReaderActivity"
             android:exported="false" />
 
+        <!-- Provider-hosted sign-in and verified online book loans -->
+        <activity
+            android:name=".BorrowActivity"
+            android:exported="false" />
+
+        <!-- Quotes & Notes — saved passages and lessons (SQLite) -->
+        <activity
+            android:name=".QuotesActivity"
+            android:exported="false" />
+
         <!-- Week 10: BroadcastReceiver for daily reading reminder -->
         <receiver
             android:name=".ReminderReceiver"
             android:exported="false" />
+
+        <!-- Week 10: BroadcastReceiver that restores the reminder after reboot -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
 
         <!-- Week 10: Simple started Service for background tasks -->
         <service

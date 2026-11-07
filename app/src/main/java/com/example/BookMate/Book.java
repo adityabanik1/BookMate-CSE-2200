@@ -3,9 +3,7 @@ package com.example.BookMate;
 import java.io.Serializable;
 
 /**
- * ============================================================
  * Book.java — Model / Data Class
- * ============================================================
  * Week 8 : Passed between Activities via Intent.putExtra()
  *           (implements Serializable so it can be serialized
  *           into an Intent Bundle).
@@ -13,7 +11,6 @@ import java.io.Serializable;
  * Week 11: Mapped from JSON (API) and stored in SQLite.
  * Reader : Stores lastReadPosition (scroll position) and
  *          readUrl (for in-app online reading).
- * ============================================================
  */
 public class Book implements Serializable {
 
@@ -31,8 +28,11 @@ public class Book implements Serializable {
     // Reading progress & online reader link
     private int lastReadPosition; // Reading progress (percent, 0-100)
     private String readUrl;       // Online reader URL (e.g. Internet Archive/Open Library)
+    private String formatLabel;
+    public String getFormatLabel() { return formatLabel == null ? "Formats unverified" : formatLabel; }
+    public void setFormatLabel(String label) { formatLabel = label; }
 
-    // ── Constructors ──────────────────────────────────────────
+    // Constructors
 
     /** Full constructor (used when loading from SQLite). */
     public Book(int id, String title, String author, String publishYear,
@@ -63,7 +63,7 @@ public class Book implements Serializable {
         this(-1, title, author, publishYear, publisher, null, 0, readUrl);
     }
 
-    // ── Getters & Setters ─────────────────────────────────────
+    // Getters & Setters
 
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }

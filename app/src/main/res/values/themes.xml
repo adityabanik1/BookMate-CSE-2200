@@ -1,6 +1,7 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
-    <style name="Theme.BookMate" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
+    <!-- App screens use light surfaces; the reader manages its own three themes. -->
+    <style name="Theme.BookMate" parent="Theme.MaterialComponents.Light.NoActionBar">
         <!-- Primary brand color. -->
         <item name="colorPrimary">@color/brand_primary</item>
         <item name="colorPrimaryVariant">@color/brand_primary_dark</item>
@@ -11,5 +12,65 @@
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor">?attr/colorPrimaryVariant</item>
+        <item name="editTextStyle">@style/Widget.BookMate.EditText</item>
+
+        <!-- Popup Menu Theme (fixes invisible white-on-white text in 3-dot overflow menu) -->
+        <item name="popupTheme">@style/ThemeOverlay.BookMate.PopupMenu</item>
+        <item name="actionBarPopupTheme">@style/ThemeOverlay.BookMate.PopupMenu</item>
+        <item name="actionMenuTextColor">@color/white</item>
+
+        <!-- Material Alert Dialog Theme with crisp contrast -->
+        <item name="materialAlertDialogTheme">@style/ThemeOverlay.BookMate.MaterialAlertDialog</item>
+        <item name="alertDialogTheme">@style/ThemeOverlay.BookMate.MaterialAlertDialog</item>
+
+        <!-- Global Button Typography (Natural Title Case, Medium Weight) -->
+        <item name="materialButtonStyle">@style/Widget.BookMate.Button</item>
+        <item name="materialButtonOutlinedStyle">@style/Widget.BookMate.Button.Outlined</item>
+
+        <!-- Smooth Activity Transitions across the whole app -->
+        <item name="android:windowAnimationStyle">@style/WindowAnimation.BookMate</item>
+    </style>
+
+    <!-- High-contrast popup / overflow menu theme (fixes invisible white-on-white text in 3-dot menu) -->
+    <style name="ThemeOverlay.BookMate.PopupMenu" parent="ThemeOverlay.MaterialComponents.Light">
+        <item name="android:colorBackground">#FFFFFF</item>
+        <item name="colorSurface">#FFFFFF</item>
+        <item name="android:textColor">#1A202C</item>
+        <item name="android:textColorPrimary">#1A202C</item>
+        <item name="android:textColorSecondary">#4A5568</item>
+        <item name="itemIconTint">@color/brand_primary</item>
+    </style>
+
+    <!-- Material Alert Dialog Theme -->
+    <style name="ThemeOverlay.BookMate.MaterialAlertDialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="colorSurface">#FFFFFF</item>
+        <item name="android:textColorPrimary">#1A202C</item>
+        <item name="android:textColorSecondary">#4A5568</item>
+        <item name="colorPrimary">@color/brand_primary</item>
+    </style>
+
+    <!-- Global Button Styles with readable Title Case -->
+    <style name="Widget.BookMate.Button" parent="Widget.MaterialComponents.Button">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="Widget.BookMate.Button.Outlined" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="Widget.BookMate.EditText" parent="Widget.AppCompat.EditText">
+        <item name="android:textColor">#1A1A1A</item>
+        <item name="android:textColorHint">#666666</item>
+        <item name="android:textColorHighlight">#665B2EA6</item>
+    </style>
+
+    <!-- Smooth slide and fade activity transitions -->
+    <style name="WindowAnimation.BookMate" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/slide_in_right</item>
+        <item name="android:activityOpenExitAnimation">@anim/slide_out_left</item>
+        <item name="android:activityCloseEnterAnimation">@anim/slide_in_left</item>
+        <item name="android:activityCloseExitAnimation">@anim/slide_out_right</item>
     </style>
 </resources>
