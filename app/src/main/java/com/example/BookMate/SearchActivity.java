@@ -108,7 +108,9 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
         toggleProvider.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
             if (!isChecked) return;
             group.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
-            if (checkedId == R.id.btnProviderGutenberg) {
+            if (checkedId == R.id.btnProviderAudio) {
+                selectedProvider = NetworkUtils.PROVIDER_AUDIO;
+            } else if (checkedId == R.id.btnProviderGutenberg) {
                 selectedProvider = NetworkUtils.PROVIDER_GUTENBERG;
             } else if (checkedId == R.id.btnProviderOpenLibrary) {
                 selectedProvider = NetworkUtils.PROVIDER_OPEN_LIBRARY;
@@ -227,7 +229,9 @@ public class SearchActivity extends AppCompatActivity implements BookAdapter.OnB
                 progressBar.setVisibility(View.GONE);
                 recyclerSearchResults.setVisibility(View.VISIBLE);
 
-                if (NetworkUtils.PROVIDER_GUTENBERG.equals(activeProvider)) {
+                if (NetworkUtils.PROVIDER_AUDIO.equals(activeProvider)) {
+                    tvSectionLabel.setText("Audiobooks for \"" + query + "\"");
+                } else if (NetworkUtils.PROVIDER_GUTENBERG.equals(activeProvider)) {
                     tvSectionLabel.setText("Project Gutenberg results for \"" + query + "\"");
                 } else if (NetworkUtils.PROVIDER_OPEN_LIBRARY.equals(activeProvider)) {
                     tvSectionLabel.setText("Open Library results for \"" + query + "\"");

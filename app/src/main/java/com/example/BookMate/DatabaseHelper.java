@@ -29,7 +29,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // ── Constants ─────────────────────────────────────────────
     private static final String DATABASE_NAME = "bookmate.db";
-    private static final int DATABASE_VERSION = 3; // 2: reader columns, 3: quotes table
+    private static final int DATABASE_VERSION = 4; // 4: verified book format label
 
     private static final String TABLE_BOOKS = "books";
     private static final String COL_ID = "id";
@@ -65,7 +65,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 + COL_PUBLISHER + " TEXT, "
                 + COL_STATUS + " TEXT, "
                 + COL_LAST_READ_POSITION + " INTEGER DEFAULT 0, "
-                + COL_READ_URL + " TEXT)";
+                + COL_READ_URL + " TEXT, format_label TEXT)";
         db.execSQL(createTable);
         createQuotesTable(db);
     }
@@ -73,6 +73,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     // ── onUpgrade: Migrate schema gracefully ──────────────────
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        if (oldVersion < 4) db.execSQL("ALTER TABLE books ADD COLUMN format_label TEXT");
         if (oldVersion < 2) {
             // Add reader support columns without wiping existing saved books
             db.execSQL("ALTER TABLE " + TABLE_BOOKS + " ADD COLUMN " + COL_LAST_READ_POSITION + " INTEGER DEFAULT 0");
@@ -114,6 +115,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
         values.put(COL_STATUS, book.getStatus());
         values.put(COL_LAST_READ_POSITION, book.getLastReadPosition());
         values.put(COL_READ_URL, book.getReadUrl());
+        values.put("format_label", book.getFormatLabel());
 
         // Check if book already exists (same title AND same author)
         Cursor cursor = db.query(TABLE_BOOKS, new String[]{COL_ID},
@@ -234,7 +236,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
             readUrl = cursor.getString(urlColIndex);
         }
 
-        return new Book(
+        Book book = new Book(
                 cursor.getInt(cursor.getColumnIndexOrThrow(COL_ID)),
                 cursor.getString(cursor.getColumnIndexOrThrow(COL_TITLE)),
                 cursor.getString(cursor.getColumnIndexOrThrow(COL_AUTHOR)),
@@ -244,6 +246,8 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 lastPos,
                 readUrl
         );
+        book.setFormatLabel(cursor.getString(cursor.getColumnIndexOrThrow("format_label")));
+        return book;
     }
 
     /**
@@ -267,7 +271,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
      */
     public void seedInitialBooksIfEmpty() {
         SQLiteDatabase db = this.getWritableDatabase();
-        Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_BOOKS + " WHERE " + COL_STATUS + " = 'FINISHED'", null);
+        repairSeedBook(db, "Alice's Adventures in Wonderland", "Lewis Carroll", "11", "FINISHED");
+        repairSeedBook(db, "The Great Gatsby", "F. Scott Fitzgerald", "64317", "FINISHED");
+        repairSeedBook(db, "Pride and Prejudice", "Jane Austen", "1342", "WANT_TO_READ");
+        Cursor cursor = db.rawQuery("SELECT COUNT(*) FROM " + TABLE_BOOKS, null);
         int finishedCount = 0;
         if (cursor != null) {
             if (cursor.moveToFirst()) {
@@ -282,10 +289,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     "Alice's Adventures in Wonderland",
                     "Lewis Carroll",
                     "1865",
-                    "Macmillan",
-                    "FINISHED"
+                    "Macmillan"
             );
             alice.setLastReadPosition(100);
+            alice.setStatus("FINISHED");
+            alice.setFormatLabel("Text ebook");
             alice.setReadUrl("https://www.gutenberg.org/ebooks/11.html.images");
             addOrUpdateBook(alice);
 
@@ -294,10 +302,11 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                     "The Great Gatsby",
                     "F. Scott Fitzgerald",
                     "1925",
-                    "Charles Scribner's Sons",
-                    "FINISHED"
+                    "Charles Scribner's Sons"
             );
             gatsby.setLastReadPosition(100);
+            gatsby.setStatus("FINISHED");
+            gatsby.setFormatLabel("Text ebook");
             gatsby.setReadUrl("https://www.gutenberg.org/ebooks/64317.html.images");
             addOrUpdateBook(gatsby);
 
@@ -315,14 +324,28 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                         "Pride and Prejudice",
                         "Jane Austen",
                         "1813",
-                        "T. Egerton",
-                        "WANT_TO_READ"
+                        "T. Egerton"
                 );
                 pride.setLastReadPosition(35);
+                pride.setStatus("WANT_TO_READ");
+                pride.setFormatLabel("Text ebook");
                 pride.setReadUrl("https://www.gutenberg.org/ebooks/1342.html.images");
                 addOrUpdateBook(pride);
             }
         }
+    }
+
+    /** Repair only the known seeded editions; preserve existing progress and chosen statuses. */
+    private void repairSeedBook(SQLiteDatabase db, String title, String author, String id, String status) {
+        String selection = "title = ? AND author = ? AND (read_url = ? OR read_url = ?)";
+        String url = "https://www.gutenberg.org/ebooks/" + id;
+        String[] args = {title, author, url, url + ".html.images"};
+        ContentValues format = new ContentValues();
+        format.put("format_label", "Text ebook");
+        db.update(TABLE_BOOKS, format, selection + " AND (format_label IS NULL OR format_label = 'Formats unverified')", args);
+        ContentValues repairedStatus = new ContentValues();
+        repairedStatus.put(COL_STATUS, status);
+        db.update(TABLE_BOOKS, repairedStatus, selection + " AND (status IS NULL OR status = '')", args);
     }
 
     // ── Quotes & Notes (Version 3) ────────────────────────────

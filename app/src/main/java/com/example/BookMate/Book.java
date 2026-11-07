@@ -31,6 +31,9 @@ public class Book implements Serializable {
     // Reading progress & online reader link
     private int lastReadPosition; // Reading progress (percent, 0-100)
     private String readUrl;       // Online reader URL (e.g. Internet Archive/Open Library)
+    private String formatLabel;
+    public String getFormatLabel() { return formatLabel == null ? "Formats unverified" : formatLabel; }
+    public void setFormatLabel(String label) { formatLabel = label; }
 
     // ── Constructors ──────────────────────────────────────────
 

@@ -121,6 +121,24 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     private Book book;
     private DatabaseHelper dbHelper;
     private boolean isWebViewMode = false;
+    private boolean isFullscreenReading;
+    private MaterialButton btnReaderFullscreen;
+
+    private void setFullscreenReading(boolean enabled) {
+        isFullscreenReading = enabled && !isWebViewMode;
+        toolbarReader.setVisibility(isFullscreenReading ? View.GONE : View.VISIBLE);
+        layoutBottomControls.setVisibility(isFullscreenReading || isWebViewMode ? View.GONE : View.VISIBLE);
+        layoutSectionControls.setVisibility(!isFullscreenReading && !isWebViewMode
+                && pages != null && pages.size() > 1 ? View.VISIBLE : View.GONE);
+        progressBarReading.setVisibility(isFullscreenReading ? View.GONE : View.VISIBLE);
+        btnReaderFullscreen.setText(isFullscreenReading ? "Exit full screen" : "Full screen");
+        btnReaderFullscreen.setContentDescription(isFullscreenReading
+                ? "Exit full-screen text reading" : "Enter full-screen text reading");
+        getWindow().getDecorView().setSystemUiVisibility(isFullscreenReading
+                ? View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                : View.SYSTEM_UI_FLAG_VISIBLE);
+    }
     private boolean isSampleText = false; // true when showing the placeholder sample (not the real book)
     private SharedPreferences prefs;
     private final ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -195,12 +213,18 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
 
         // Setup User Interaction Listeners
         setupListeners();
+        btnReaderFullscreen = findViewById(R.id.btnReaderFullscreen);
+        btnReaderFullscreen.setOnClickListener(v -> setFullscreenReading(!isFullscreenReading));
+        if (savedInstanceState != null && savedInstanceState.getBoolean("fullscreen_reading")) {
+            setFullscreenReading(true);
+        }
     }
 
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putInt("saved_section", currentSection);
+        outState.putBoolean("fullscreen_reading", isFullscreenReading);
     }
 
     private void initViews() {
@@ -359,7 +383,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
             btnChapters.setVisibility(!isWebViewMode && pages.getChapters().size() > 1
                     ? View.VISIBLE : View.GONE);
         }
-        layoutSectionControls.setVisibility(!isWebViewMode && pages.size() > 1
+        layoutSectionControls.setVisibility(!isFullscreenReading && !isWebViewMode && pages.size() > 1
                 ? View.VISIBLE : View.GONE);
         scrollReader.post(() -> {
             if (currentSection != section || isFinishing() || isDestroyed()) return;
@@ -937,6 +961,8 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     // ═══════════════════════════════════════════════════════════
 
     private void toggleReaderMode() {
+        if (isFullscreenReading) setFullscreenReading(false);
+        btnReaderFullscreen.setVisibility(isWebViewMode ? View.VISIBLE : View.GONE);
         if (!isWebViewMode) {
             // Switch to In-App WebView
             isWebViewMode = true;
@@ -1018,6 +1044,8 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
     }
 
     private String getOnlineReadingUrl() {
+        String catalogUrl = GutenbergLinks.catalogUrl(book.getReadUrl());
+        if (!java.util.Objects.equals(catalogUrl, book.getReadUrl())) return catalogUrl;
         Uri uri = Uri.parse(book.getReadUrl());
         // Full item pages expose availability, sign-in and borrowing controls hidden by embeds.
         if ("archive.org".equalsIgnoreCase(uri.getHost())) {
@@ -1032,6 +1060,10 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
 
     @Override
     public void onBackPressed() {
+        if (isFullscreenReading) {
+            setFullscreenReading(false);
+            return;
+        }
         if (isWebViewMode && webViewReader.canGoBack()) {
             webViewReader.goBack();
         } else {

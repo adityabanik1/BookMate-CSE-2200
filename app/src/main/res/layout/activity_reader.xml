@@ -207,6 +207,15 @@
     </FrameLayout>
 
     <!-- Sections keep long books readable without one oversized TextView. -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnReaderFullscreen"
+        style="@style/Widget.MaterialComponents.Button.TextButton"
+        android:layout_width="wrap_content"
+        android:layout_height="48dp"
+        android:layout_gravity="end"
+        android:text="Full screen"
+        android:contentDescription="Enter full-screen text reading" />
+
     <LinearLayout
         android:id="@+id/layoutSectionControls"
         android:layout_width="match_parent"

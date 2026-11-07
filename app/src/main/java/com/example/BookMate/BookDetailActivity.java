@@ -387,6 +387,7 @@ public class BookDetailActivity extends AppCompatActivity {
             book.setId(savedBook.getId());
             book.setStatus(savedBook.getStatus());
             book.setLastReadPosition(savedBook.getLastReadPosition());
+            if (!"Formats unverified".equals(savedBook.getFormatLabel())) book.setFormatLabel(savedBook.getFormatLabel());
             if (savedBook.getReadUrl() != null && !savedBook.getReadUrl().isEmpty()) {
                 book.setReadUrl(savedBook.getReadUrl());
             }
@@ -421,10 +422,10 @@ public class BookDetailActivity extends AppCompatActivity {
             btnDelete.setVisibility(View.GONE);
 
             if (isGutenberg) {
-                tvStatus.setText("Free Full-Text Ebook");
+                tvStatus.setText(book.getFormatLabel());
                 BookAdapter.setBadgeColor(tvStatus, R.color.badge_gutenberg);
                 tvStatus.setVisibility(View.VISIBLE);
-                btnReadBook.setText("Read Full Book");
+                btnReadBook.setText("Audiobook".equals(book.getFormatLabel()) ? "Open Audiobook" : "Read Book");
             } else if (book.getReadUrl() != null && (book.getReadUrl().contains("archive.org") || book.getReadUrl().contains("openlibrary.org"))) {
                 tvStatus.setText("🏛️ Open Library Catalog");
                 BookAdapter.setBadgeColor(tvStatus, R.color.badge_open_library);
@@ -452,6 +453,11 @@ public class BookDetailActivity extends AppCompatActivity {
 
         // ── Direct Reading: Launch ReaderActivity ─────────────
         btnReadBook.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
+            if ("Audiobook".equals(book.getFormatLabel())) {
+                startActivity(new Intent(Intent.ACTION_VIEW,
+                        android.net.Uri.parse(GutenbergLinks.catalogUrl(book.getReadUrl()))));
+                return;
+            }
             // Auto-save to "WANT_TO_READ" if not saved yet so progress can be tracked
             if (!book.isSaved()) {
                 book.setStatus("WANT_TO_READ");

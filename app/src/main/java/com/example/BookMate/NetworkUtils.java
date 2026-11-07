@@ -36,6 +36,7 @@ import java.util.Set;
 public class NetworkUtils {
 
     public static final String PROVIDER_ALL = "all";
+    public static final String PROVIDER_AUDIO = "audio";
     public static final String PROVIDER_GUTENBERG = "gutenberg";
     public static final String PROVIDER_OPEN_LIBRARY = "openlibrary";
 
@@ -77,6 +78,7 @@ public class NetworkUtils {
         if (query == null || query.trim().isEmpty()) {
             return new ArrayList<>();
         }
+        if (PROVIDER_AUDIO.equalsIgnoreCase(provider)) return searchGutenbergFormats(query, true);
         if (PROVIDER_GUTENBERG.equalsIgnoreCase(provider)) {
             return searchGutenberg(query);
         } else if (PROVIDER_OPEN_LIBRARY.equalsIgnoreCase(provider)) {
@@ -98,32 +100,30 @@ public class NetworkUtils {
      * MUST be called from a background thread.
      */
     public static List<Book> searchGutenberg(String query) {
+        return searchGutenbergFormats(query, false);
+    }
+
+    private static List<Book> searchGutenbergFormats(String query, boolean audio) {
         if (query == null || query.trim().isEmpty()) {
             return new ArrayList<>();
         }
 
-        // 1. Primary: Search Open Library's Gutenberg index (fast & reliable)
-        List<Book> olGutenberg = searchOpenLibraryGutenberg(query);
-        if (olGutenberg != null && !olGutenberg.isEmpty()) {
-            return olGutenberg;
-        }
 
         // 2. Secondary / Fallback: Gutendex API with 3.5s timeout
         try {
             String encodedQuery = URLEncoder.encode(query.trim(), "UTF-8");
-            String urlString = GUTENDEX_BASE_URL + "?search=" + encodedQuery + "&languages=en";
+            String urlString = GUTENDEX_BASE_URL + "?search=" + encodedQuery + "&languages=en&mime_type="
+                    + (audio ? "audio%2F" : "text%2Fplain");
             String json = fetchJsonFromUrl(urlString, 3500);
             if (json != null) {
                 List<Book> gutendexResults = parseGutendexJsonResponse(json);
-                if (gutendexResults != null && !gutendexResults.isEmpty()) {
-                    return gutendexResults;
-                }
+                return BookSearchRanking.rank(query, gutendexResults);
             }
         } catch (Exception e) {
             // Gutendex unavailable or timed out
         }
 
-        return olGutenberg != null ? olGutenberg : new ArrayList<>();
+        return null;
     }
 
     /**
@@ -172,7 +172,22 @@ public class NetworkUtils {
                 String publisher = "Project Gutenberg";
                 String readUrl = id > 0 ? "https://www.gutenberg.org/ebooks/" + id + ".html.images" : null;
 
-                books.add(new Book(title, author, publishYear, publisher, readUrl));
+                Book book = new Book(title, author, publishYear, publisher, readUrl);
+                JSONObject formats = item.optJSONObject("formats");
+                boolean text = false, audio = false;
+                if (formats != null) {
+                    java.util.Iterator<String> keys = formats.keys();
+                    while (keys.hasNext()) {
+                        String mime = keys.next();
+                        if (mime.startsWith("text/plain") && isWebFormat(formats.optString(mime))) {
+                            text = true;
+                        }
+                        if (mime.startsWith("audio/") && isWebFormat(formats.optString(mime))) audio = true;
+                    }
+                }
+                book.setFormatLabel(text && audio ? "Text and audio" : text ? "Text ebook"
+                        : audio ? "Audiobook" : "Formats unverified");
+                books.add(book);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -193,6 +208,44 @@ public class NetworkUtils {
         return trimmed;
     }
 
+    private static boolean isWebFormat(String url) {
+        return url.startsWith("https://") || url.startsWith("http://");
+    }
+
+    /** Enrich catalog-only Gutenberg entries by exact ID, never by a similar title. */
+    static void applyGutenbergFormats(List<Book> books, List<Book> metadata) {
+        java.util.Map<String, String> labels = new java.util.HashMap<>();
+        for (Book item : metadata) {
+            String id = GutenbergLinks.catalogUrl(item.getReadUrl());
+            if (id != null && !"Formats unverified".equals(item.getFormatLabel())) labels.put(id, item.getFormatLabel());
+        }
+        for (Book book : books) {
+            String label = labels.get(GutenbergLinks.catalogUrl(book.getReadUrl()));
+            if (label != null) book.setFormatLabel(label);
+        }
+    }
+
+    private static List<Book> verifyGutenbergFormats(List<Book> books) {
+        java.util.Set<String> ids = new java.util.LinkedHashSet<>();
+        for (Book book : books) {
+            String url = GutenbergLinks.catalogUrl(book.getReadUrl());
+            if (url != null && url.matches("https://www\\.gutenberg\\.org/ebooks/[0-9]+")) {
+                ids.add(url.substring(url.lastIndexOf('/') + 1));
+            }
+        }
+        if (!ids.isEmpty()) {
+            String json = fetchJsonFromUrl(GUTENDEX_BASE_URL + "?ids=" + androidFreeJoin(ids), 6000);
+            if (json != null) applyGutenbergFormats(books, parseGutendexJsonResponse(json));
+        }
+        return books;
+    }
+
+    private static String androidFreeJoin(java.util.Set<String> ids) {
+        StringBuilder result = new StringBuilder();
+        for (String id : ids) { if (result.length() > 0) result.append(','); result.append(id); }
+        return result.toString();
+    }
+
     /**
      * Searches Open Library API.
      * MUST be called from a background thread.
@@ -204,7 +257,7 @@ public class NetworkUtils {
                     + "&fields=key,title,author_name,first_publish_year,publisher,ia,lending_identifier,id_project_gutenberg,cover_i";
             String json = fetchJsonFromUrl(urlString, 10000);
             if (json != null) {
-                return parseJsonResponse(json);
+                return verifyGutenbergFormats(parseJsonResponse(json));
             }
         } catch (Exception e) {
             e.printStackTrace();

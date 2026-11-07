@@ -82,11 +82,13 @@ public class FeaturedBooksParser {
                             // Finished one <book> → create the Book object
                             String readUrl = "https://www.gutenberg.org/ebooks/"
                                     + gutenbergId + ".html.images";
-                            books.add(new Book(title,
+                            Book book = new Book(title,
                                     author != null ? author : "Unknown Author",
                                     year != null ? year : "N/A",
                                     publisher != null ? publisher : "N/A",
-                                    readUrl));
+                                    readUrl);
+                            book.setFormatLabel("Text ebook"); // Curated text editions in featured_books.xml.
+                            books.add(book);
                         }
                         currentTag = null;
                         break;
