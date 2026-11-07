@@ -82,6 +82,29 @@ public class QuotesActivity extends AppCompatActivity implements QuoteAdapter.On
     protected void onResume() {
         super.onResume();
         loadQuotes();
+        restoreAccountQuotes();
+    }
+
+    private void restoreAccountQuotes() {
+        com.google.firebase.firestore.CollectionReference ref = QuoteCloud.collection();
+        com.google.firebase.auth.FirebaseUser user = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        if (ref == null || user == null) return;
+        String uid = user.getUid();
+        ref.get().addOnSuccessListener(snapshot -> {
+            com.google.firebase.auth.FirebaseUser current = com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+            if (isFinishing() || isDestroyed() || current == null || !uid.equals(current.getUid())) return;
+            for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
+                String text = doc.getString("text");
+                Long created = doc.getLong("createdAt");
+                if (text == null || created == null) continue;
+                dbHelper.addQuoteIfNew(new Quote(-1, text, doc.getString("note"),
+                        doc.getString("bookTitle"), doc.getString("bookAuthor"), created));
+            }
+            loadQuotes();
+        }).addOnFailureListener(error -> {
+            if (!isFinishing() && !isDestroyed()) Toast.makeText(this,
+                    "Account quotes could not sync. Check your connection and reopen Quotes.", Toast.LENGTH_LONG).show();
+        });
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -117,6 +140,15 @@ public class QuotesActivity extends AppCompatActivity implements QuoteAdapter.On
                 .setTitle("Delete quote?")
                 .setMessage("This quote and its note will be removed.")
                 .setPositiveButton("Delete", (dialog, which) -> {
+                    com.google.firebase.firestore.CollectionReference ref = QuoteCloud.collection();
+                    if (ref != null) {
+                        ref.whereEqualTo("text", quote.getText()).get().addOnSuccessListener(snapshot -> {
+                            for (com.google.firebase.firestore.DocumentSnapshot doc : snapshot.getDocuments()) {
+                                Long created = doc.getLong("createdAt");
+                                if (created != null && created == quote.getCreatedAt()) doc.getReference().delete();
+                            }
+                        });
+                    }
                     dbHelper.deleteQuote(quote.getId());
                     Toast.makeText(this, "Quote deleted", Toast.LENGTH_SHORT).show();
                     loadQuotes(); // refresh the list

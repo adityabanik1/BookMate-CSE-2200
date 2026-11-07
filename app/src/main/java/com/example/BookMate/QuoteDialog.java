@@ -74,7 +74,10 @@ public class QuoteDialog {
                     dbHelper.close();
                     activity.getWindow().getDecorView().performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);
 
-                    Toast.makeText(activity, "Quote saved", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(activity, "Saved on this device. Syncing to your account…", Toast.LENGTH_SHORT).show();
+                    QuoteCloud.save(quote,
+                            () -> Toast.makeText(activity, "Quote saved to your account", Toast.LENGTH_SHORT).show(),
+                            () -> Toast.makeText(activity, "Saved on this device only. Use Back Up to Cloud when connected.", Toast.LENGTH_LONG).show());
                     if (onSaved != null) onSaved.run();
                 })
                 .setNegativeButton("Cancel", null)
