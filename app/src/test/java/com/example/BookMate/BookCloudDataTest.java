@@ -6,6 +6,29 @@ import java.util.Map;
 import static org.junit.Assert.*;
 
 public class BookCloudDataTest {
+    @Test public void stableIdentityIgnoresDeviceIdsAndProgress() {
+        Book first = new Book(1, "A/B", "Author", "", "", "WANT_TO_READ", 2, "url");
+        Book second = new Book(99, "A/B", "Author", "", "", "FINISHED", 100, "url");
+        assertEquals(BookCloudData.documentId(first), BookCloudData.documentId(second));
+        assertFalse(BookCloudData.documentId(first).contains("/"));
+    }
+
+    @Test public void canonicalProgressOverridesLegacyBackupAndDeletionPreventsResurrection() {
+        Book book = new Book(1, "Title", "Author", "", "", "WANT_TO_READ", 12, "url");
+        Map<String, Map<String, Object>> documents = new java.util.LinkedHashMap<>();
+        book.setLastReadPosition(65);
+        Map<String, Object> current = BookCloudData.toMap(book);
+        documents.put(BookCloudData.documentId(book), current);
+        book.setLastReadPosition(12);
+        documents.put("old-random-id", BookCloudData.toMap(book));
+        assertEquals(1, BookCloudData.restoredBooks(documents).size());
+        assertEquals(65, BookCloudData.restoredBooks(documents).get(0).getLastReadPosition());
+        current.put("deleted", true);
+        assertTrue(BookCloudData.restoredBooks(documents).isEmpty());
+        current.put("deleted", false);
+        assertEquals(1, BookCloudData.restoredBooks(documents).size());
+    }
+
     @Test public void backupRoundTripPreservesEveryBookField() {
         Book original = new Book(12, "Alice", "Lewis Carroll", "1865", "Publisher",
                 "WANT_TO_READ", 35, "https://www.gutenberg.org/ebooks/11");

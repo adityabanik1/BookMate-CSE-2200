@@ -32,7 +32,7 @@
                 android:layout_gravity="center"
                 android:src="@drawable/ic_local_fire"
                 app:tint="@color/brand_primary"
-                android:contentDescription="Fire Streak" />
+                android:contentDescription="Reading streak" />
 
         </com.google.android.material.card.MaterialCardView>
 

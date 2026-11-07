@@ -351,6 +351,7 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
     protected void onResume() {
         super.onResume();
         loadBooks();
+        restoreMissingAccountBooks();
     }
     // Load Books from SQLite — Week 11
 
@@ -519,6 +520,12 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
 
     private void logout() {
         FirebaseAuth.getInstance().signOut();
+        try {
+            com.google.android.gms.auth.api.signin.GoogleSignIn.getClient(this,
+                    new com.google.android.gms.auth.api.signin.GoogleSignInOptions.Builder(
+                            com.google.android.gms.auth.api.signin.GoogleSignInOptions.DEFAULT_SIGN_IN).build()).signOut();
+        } catch (Exception ignored) {
+        }
         Toast.makeText(this, "Logged out", Toast.LENGTH_SHORT).show();
         openLoginActivity();
     }
@@ -558,17 +565,16 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         }
 
         // Turn every Book and Quote into a Map (one Firestore document each)
-        List<Map<String, Object>> bookDocs = new ArrayList<>();
-        for (Book book : books) {
-            bookDocs.add(BookCloudData.toMap(book));
-        }
         List<Map<String, Object>> quoteDocs = new ArrayList<>();
         for (Quote quote : quotes) {
             quoteDocs.add(QuoteCloud.toMap(quote));
         }
 
         Toast.makeText(this, "Backing up...", Toast.LENGTH_SHORT).show();
-        replaceCloudCollection("books", bookDocs);
+        // A partly restored phone must not erase books already in the account.
+        for (Book book : books) BookCloud.save(this, book);
+        Toast.makeText(this, "Book sync requested. Connect to finish saving to your account.",
+                Toast.LENGTH_LONG).show();
         replaceCloudCollection("quotes", quoteDocs);
     }
 
@@ -631,10 +637,9 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
         // 1. Books
         booksRef.get().addOnSuccessListener(snapshot -> {
             if (!isCurrentCloudUser(uid)) return;
-            for (DocumentSnapshot doc : snapshot.getDocuments()) {
-                dbHelper.addOrUpdateBook(BookCloudData.fromMap(doc.getData()));
-            }
-            Toast.makeText(this, "Restored " + snapshot.size() + " books", Toast.LENGTH_SHORT).show();
+            List<Book> restored = accountBooks(snapshot);
+            for (Book book : restored) dbHelper.addOrUpdateBook(book);
+            Toast.makeText(this, "Restored " + restored.size() + " books", Toast.LENGTH_SHORT).show();
             loadBooks(); // refresh the list
         }).addOnFailureListener(this::showCloudError);
 
@@ -649,6 +654,51 @@ public class MainActivity extends AppCompatActivity implements BookAdapter.OnBoo
             }
             Toast.makeText(this, "Restored " + added + " new quotes", Toast.LENGTH_SHORT).show();
         }).addOnFailureListener(this::showCloudError);
+    }
+
+    private List<Book> accountBooks(com.google.firebase.firestore.QuerySnapshot snapshot) {
+        Map<String, Map<String, Object>> documents = new java.util.LinkedHashMap<>();
+        for (DocumentSnapshot doc : snapshot.getDocuments()) {
+            documents.put(doc.getId(), doc.getData());
+        }
+        return BookCloudData.restoredBooks(documents);
+    }
+
+    /** Restore missing books and untouched demo defaults, preserving device edits. */
+    private void restoreMissingAccountBooks() {
+        if (dbHelper == null || adapter == null) return;
+        CollectionReference ref = BookCloud.collection();
+        if (ref == null) return;
+        String uid = ref.getParent().getId();
+        long revision = BookCloud.revision();
+        ref.get(com.google.firebase.firestore.Source.SERVER).addOnSuccessListener(snapshot -> {
+            if (!isCurrentCloudUser(uid) || revision != BookCloud.revision()) return;
+            for (Book book : accountBooks(snapshot)) {
+                if (dbHelper.isBookSaved(book.getTitle(), book.getAuthor()) == null
+                        || BookCloud.isUntouchedDemo(this, book)) {
+                    dbHelper.addOrUpdateBook(book);
+                    BookCloud.clearDemo(this, book);
+                }
+            }
+            // A freshly seeded demo must also respect an account deletion.
+            for (DocumentSnapshot doc : snapshot.getDocuments()) {
+                if (Boolean.TRUE.equals(doc.getBoolean("deleted"))) {
+                    Book deleted = BookCloudData.fromMap(doc.getData());
+                    if (doc.getId().equals(BookCloudData.documentId(deleted))
+                            && BookCloud.isUntouchedDemo(this, deleted)) {
+                        Book local = dbHelper.isBookSaved(deleted.getTitle(), deleted.getAuthor());
+                        if (local != null) dbHelper.deleteBook(local.getId());
+                        BookCloud.clearDemo(this, deleted);
+                    }
+                }
+            }
+            loadBooks();
+        }).addOnFailureListener(error -> {
+            if (isCurrentCloudUser(uid) && NetworkMonitor.isOnline(this)) {
+                Toast.makeText(this, "Account library could not sync. Try again when connected.",
+                        Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private boolean isCurrentCloudUser(String uid) {

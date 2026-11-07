@@ -553,6 +553,7 @@ public class BorrowActivity extends AppCompatActivity {
                         book.getLastReadPosition(), book.getReadUrl());
                 finished.setStatus("FINISHED");
                 saved = db.addOrUpdateBook(finished) > 0;
+                if (saved) BookCloud.save(this, finished);
             } catch (Exception ignored) { saved = false; }
             final boolean success = saved;
             runOnUiThread(() -> {

@@ -475,6 +475,7 @@ public class BookDetailActivity extends AppCompatActivity {
             if (!book.isSaved()) {
                 book.setStatus("WANT_TO_READ");
                 dbHelper.addOrUpdateBook(book);
+                BookCloud.save(this, book);
             }
 
             Intent readerIntent = new Intent(BookDetailActivity.this, ReaderActivity.class);
@@ -486,6 +487,7 @@ public class BookDetailActivity extends AppCompatActivity {
         btnSaveWantToRead.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             book.setStatus("WANT_TO_READ");
             dbHelper.addOrUpdateBook(book);
+            BookCloud.save(this, book);
             Toast.makeText(this, "Saved to 'Want to Read'", Toast.LENGTH_SHORT).show();
             checkSavedStatus(); // Refresh UI
         }));
@@ -494,6 +496,7 @@ public class BookDetailActivity extends AppCompatActivity {
         btnSaveFinished.setOnClickListener(v -> UiUtils.animateClick(v, () -> {
             book.setStatus("FINISHED");
             dbHelper.addOrUpdateBook(book);
+            BookCloud.save(this, book);
             Toast.makeText(this, "Marked as 'Finished'", Toast.LENGTH_SHORT).show();
             checkSavedStatus(); // Refresh UI
         }));
@@ -507,6 +510,7 @@ public class BookDetailActivity extends AppCompatActivity {
                     .setPositiveButton("Delete", (dialog, which) -> {
                         if (book.getId() > 0) {
                             dbHelper.deleteBook(book.getId());
+                            BookCloud.delete(this, book);
                             book.setStatus(null);
                             book.setId(-1);
                             book.setLastReadPosition(0);

@@ -48,7 +48,25 @@ public class DatabaseHelper extends SQLiteOpenHelper {
 
     // ── Constructor ───────────────────────────────────────────
     public DatabaseHelper(Context context) {
-        super(context, DATABASE_NAME, null, DATABASE_VERSION);
+        super(context, accountDatabaseName(context), null, DATABASE_VERSION);
+        appContext = context.getApplicationContext();
+    }
+
+    private final Context appContext;
+
+    private static String accountDatabaseName(Context context) {
+        com.google.firebase.auth.FirebaseUser user =
+                com.google.firebase.auth.FirebaseAuth.getInstance().getCurrentUser();
+        if (user == null) return DATABASE_NAME;
+        android.content.SharedPreferences ownership = context.getSharedPreferences(
+                "bookmate_database_owner", Context.MODE_PRIVATE);
+        String owner = ownership.getString("legacy_uid", null);
+        if (owner == null) {
+            // Preserve the existing installation for its first signed-in account.
+            ownership.edit().putString("legacy_uid", user.getUid()).commit();
+            owner = user.getUid();
+        }
+        return AccountStorage.databaseName(owner, user.getUid());
     }
 
     // ── onCreate: Create the books and quotes tables ──────────
@@ -317,6 +335,7 @@ public class DatabaseHelper extends SQLiteOpenHelper {
                 "https://www.gutenberg.org/ebooks/" + gutenbergId + ".html.images");
         book.setFormatLabel("Text ebook");
         addOrUpdateBook(book);
+        BookCloud.markDemo(appContext, book);
     }
 
     /** Repair only the known seeded editions; preserve existing progress and chosen statuses. */

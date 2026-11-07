@@ -681,6 +681,7 @@ public class ReaderActivity extends AppCompatActivity implements TextToSpeech.On
                 && !isSampleText && quoteToShow == null) {
             calculateAndDisplayProgress();
             dbHelper.updateReadingProgress(book.getId(), book.getLastReadPosition());
+            BookCloud.save(this, book);
         }
 
         // Stop speaking if active

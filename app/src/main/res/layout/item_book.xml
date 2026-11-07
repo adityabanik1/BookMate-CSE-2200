@@ -16,71 +16,76 @@
     android:clickable="true"
     android:focusable="true">
 
-    <LinearLayout
+    <!-- Week 9: ConstraintLayout positions each view relative to its neighbours
+         (no nested layouts needed): title beside the badge, author and year below. -->
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Top row: Title + Status badge -->
-        <LinearLayout
-            android:layout_width="match_parent"
+        <!-- Title: fills the space between the left edge and the status badge -->
+        <TextView
+            android:id="@+id/tvBookTitle"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
+            android:text="Book Title"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/black"
+            android:maxLines="2"
+            android:ellipsize="end"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/tvBookStatus"
+            app:layout_constraintTop_toTopOf="parent" />
 
-            <TextView
-                android:id="@+id/tvBookTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Book Title"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:textColor="@android:color/black"
-                android:maxLines="2"
-                android:ellipsize="end" />
+        <!-- Status badge: Want to Read / Finished / Online Result.
+             Pinned to the right edge and vertically centred on the title. -->
+        <TextView
+            android:id="@+id/tvBookStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="Status"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="@android:color/white"
+            android:background="@drawable/bg_badge"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="@id/tvBookTitle"
+            app:layout_constraintBottom_toBottomOf="@id/tvBookTitle" />
 
-            <!-- Status badge: Want to Read / Finished / Online Result -->
-            <TextView
-                android:id="@+id/tvBookStatus"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:paddingTop="3dp"
-                android:paddingBottom="3dp"
-                android:text="Status"
-                android:textSize="11sp"
-                android:textStyle="bold"
-                android:textColor="@android:color/white"
-                android:background="@drawable/bg_badge" />
-
-        </LinearLayout>
-
-        <!-- Author -->
+        <!-- Author: below the title -->
         <TextView
             android:id="@+id/tvBookAuthor"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
             android:text="by Author Name"
             android:textSize="14sp"
             android:textColor="#FF4B5563"
             android:maxLines="1"
-            android:ellipsize="end" />
+            android:ellipsize="end"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvBookTitle" />
 
-        <!-- Publication Year -->
+        <!-- Publication Year: below the author -->
         <TextView
             android:id="@+id/tvBookYear"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="3dp"
             android:text="Published: N/A"
             android:textSize="12sp"
-            android:textColor="#FF666666" />
+            android:textColor="#FF666666"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvBookAuthor" />
 
-    </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 
 </com.google.android.material.card.MaterialCardView>

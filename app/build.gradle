@@ -16,9 +16,10 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        // Load Gemini API Key securely from secrets.properties (ignored by Git)
+        // Load Gemini API Key & optional Google Web Client ID securely from secrets.properties (ignored by Git)
         def secretsFile = rootProject.file("secrets.properties")
         def geminiApiKey = ""
+        def googleWebClientId = ""
         if (secretsFile.exists()) {
             Properties properties = new Properties()
             properties.load(secretsFile.newDataInputStream())
@@ -32,8 +33,19 @@ android {
                     }
                 }
             }
+            googleWebClientId = properties.getProperty("GOOGLE_WEB_CLIENT_ID", "")
+            if (googleWebClientId != null) {
+                googleWebClientId = googleWebClientId.trim()
+                if ((googleWebClientId.startsWith("\"") && googleWebClientId.endsWith("\"")) ||
+                    (googleWebClientId.startsWith("'") && googleWebClientId.endsWith("'"))) {
+                    if (googleWebClientId.length() >= 2) {
+                        googleWebClientId = googleWebClientId.substring(1, googleWebClientId.length() - 1).trim()
+                    }
+                }
+            }
         }
         buildConfigField "String", "GEMINI_API_KEY", "\"${geminiApiKey}\""
+        buildConfigField "String", "GOOGLE_WEB_CLIENT_ID", "\"${googleWebClientId}\""
     }
 
     buildFeatures {
@@ -72,7 +84,8 @@ dependencies {
     // Firebase libraries, so the lines below don't need their own version numbers.
     // 32.1.1 is used because it works with this project's compileSdk 33 / AGP 8.0.
     implementation platform('com.google.firebase:firebase-bom:32.1.1')
-    implementation 'com.google.firebase:firebase-auth'      // Email/Password login
+    implementation 'com.google.firebase:firebase-auth'      // Email/Password & Google login
+    implementation 'com.google.android.gms:play-services-auth:20.7.0' // Google Sign-In SDK
     implementation 'com.google.firebase:firebase-firestore' // Cloud backup of books
     implementation 'com.google.firebase:firebase-database'  // Realtime community recommendations
 
